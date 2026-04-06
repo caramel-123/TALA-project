@@ -14,6 +14,10 @@ export function DataManager() {
   const [usingFallback, setUsingFallback] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const hasDataSources = pageData.dataSources.length > 0;
+  const hasValidationIssues = pageData.validationIssues.length > 0;
+  const hasRegionalQuality = pageData.dataQualityByRegion.length > 0;
+
   useEffect(() => {
     let isMounted = true;
 
@@ -95,7 +99,7 @@ export function DataManager() {
             IDA Integrate Layer - Control and validate all data feeding TALA
           </p>
           <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4' }}>
-            {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected to Supabase'}
+            {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
           </p>
           {loadError && (
             <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B' }}>
@@ -167,6 +171,13 @@ export function DataManager() {
                 </tr>
               </thead>
               <tbody>
+                {!isLoading && !hasDataSources && (
+                  <tr>
+                    <td colSpan={7} className="p-4" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
+                      No data sources found. Upload a dataset to populate this registry.
+                    </td>
+                  </tr>
+                )}
                 {pageData.dataSources.map((source, index) => (
                   <tr 
                     key={index}
@@ -229,6 +240,11 @@ export function DataManager() {
             >
               Validation Issues
             </h2>
+            {!isLoading && !hasValidationIssues && (
+              <div className="p-3 rounded mb-3" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No validation issues were found for recent batches.
+              </div>
+            )}
             <div className="space-y-3">
               {pageData.validationIssues.map((issue, index) => (
                 <div 
@@ -301,6 +317,11 @@ export function DataManager() {
             >
               Data Quality by Region
             </h2>
+            {!isLoading && !hasRegionalQuality && (
+              <div className="p-3 rounded mb-3" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No regional quality snapshots are available yet.
+              </div>
+            )}
             <div className="space-y-4">
               {pageData.dataQualityByRegion.map((region, index) => (
                 <div key={index} className="p-3 rounded" style={{ backgroundColor: '#EBF4FB' }}>

@@ -4,16 +4,59 @@ import { normalizeSourceStatus } from '../../shared/mappers/formatters';
 import { queryWithFallback } from '../../shared/api/query-with-fallback';
 import type { AdvisePageVm, RecommendationVm } from '../../shared/types/view-models';
 
-async function fetchRecommendationsFromSupabase(): Promise<RecommendationVm[]> {
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function resolveRegionId(regionCodeOrId: string): Promise<string> {
   if (!supabase) {
     throw new Error('Supabase client is not available.');
   }
 
+  const normalized = regionCodeOrId.trim();
+
+  const byCode = await supabase
+    .from('regions')
+    .select('id')
+    .eq('psgc_code', normalized)
+    .maybeSingle();
+
+  if (byCode.error) {
+    throw byCode.error;
+  }
+
+  if (byCode.data?.id) {
+    return byCode.data.id;
+  }
+
+  if (!isUuidLike(normalized)) {
+    throw new Error(`Region '${normalized}' not found by PSGC code.`);
+  }
+
+  return normalized;
+}
+
+async function fetchRecommendationsFromSupabase(regionCodeOrId?: string): Promise<RecommendationVm[]> {
+  if (!supabase) {
+    throw new Error('Supabase client is not available.');
+  }
+
+  let regionId: string | null = null;
+  if (regionCodeOrId) {
+    regionId = await resolveRegionId(regionCodeOrId);
+  }
+
+  let recommendationsQuery = supabase
+    .from('recommendations')
+    .select('id, region_id, score, gap, primary_program_id, secondary_program_id, status, confidence, delivery_method, resource_requirement')
+    .order('score', { ascending: false });
+
+  if (regionId) {
+    recommendationsQuery = recommendationsQuery.eq('region_id', regionId);
+  }
+
   const [recommendationsResponse, regionsResponse, programsResponse] = await Promise.all([
-    supabase
-      .from('recommendations')
-      .select('id, region_id, score, gap, primary_program_id, secondary_program_id, status, confidence, delivery_method, resource_requirement')
-      .order('score', { ascending: false }),
+    recommendationsQuery,
     supabase.from('regions').select('id, region_name'),
     supabase.from('star_programs').select('id, name'),
   ]);
@@ -83,19 +126,23 @@ async function fetchInterventionPortfolioFromSupabase(): Promise<string[]> {
   return rows.map((row) => row.name as string);
 }
 
-export async function getRecommendations() {
-  return queryWithFallback(fetchRecommendationsFromSupabase, devSeed.advise.recommendations, 'advice recommendations');
+export async function getRecommendations(regionCodeOrId?: string) {
+  return queryWithFallback(
+    () => fetchRecommendationsFromSupabase(regionCodeOrId),
+    devSeed.advise.recommendations,
+    'advice recommendations',
+  );
 }
 
 export async function getInterventionPortfolio() {
   return queryWithFallback(fetchInterventionPortfolioFromSupabase, devSeed.advise.interventionPortfolio, 'intervention portfolio');
 }
 
-export async function getAdvisePageData() {
+export async function getAdvisePageData(regionCodeOrId?: string) {
   return queryWithFallback<AdvisePageVm>(
     async () => {
       const [recommendations, interventionPortfolio] = await Promise.all([
-        fetchRecommendationsFromSupabase(),
+        fetchRecommendationsFromSupabase(regionCodeOrId),
         fetchInterventionPortfolioFromSupabase(),
       ]);
 

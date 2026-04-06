@@ -159,7 +159,7 @@ export function Diagnose() {
                   <span>Last Updated: {regionData.lastUpdated}</span>
                 </div>
                 <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4', marginTop: '6px' }}>
-                  {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected to Supabase'}
+                  {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
                 </div>
                 {loadError && (
                   <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B', marginTop: '4px' }}>
@@ -238,6 +238,14 @@ export function Diagnose() {
 
 // View Components
 function RegionalProfilerView({ gapFactors, cohorts }: { gapFactors: GapFactorVm[]; cohorts: CohortVm[] }) {
+  if (gapFactors.length === 0 && cohorts.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No regional profiler metrics are available yet.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -320,6 +328,14 @@ function RegionalProfilerView({ gapFactors, cohorts }: { gapFactors: GapFactorVm
 }
 
 function DivisionView({ divisions, onDivisionClick }: { divisions: DivisionVm[]; onDivisionClick: (name: string) => void }) {
+  if (divisions.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No division breakdown is available for this region.
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <h2 
@@ -387,6 +403,13 @@ function DivisionView({ divisions, onDivisionClick }: { divisions: DivisionVm[];
 }
 
 function ClusterMapView({ clusters }: { clusters: ClusterVm[] }) {
+  if (clusters.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No school clusters are available for this region.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -457,6 +480,14 @@ function ClusterMapView({ clusters }: { clusters: ClusterVm[] }) {
 }
 
 function TeacherCohortView({ cohorts }: { cohorts: CohortVm[] }) {
+  if (cohorts.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No teacher cohort segmentation data is available.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -525,6 +556,13 @@ function TeacherCohortView({ cohorts }: { cohorts: CohortVm[] }) {
 }
 
 function UnderservedScoreView({ scoreFactors, underservedScore }: { scoreFactors: ScoreFactorVm[]; underservedScore: number }) {
+  if (scoreFactors.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No underserved score factors are available.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -618,6 +656,14 @@ function UnderservedScoreView({ scoreFactors, underservedScore }: { scoreFactors
 }
 
 function GapFactorView({ gapFactors }: { gapFactors: GapFactorVm[] }) {
+  if (gapFactors.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No gap-factor data is available.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -705,6 +751,13 @@ function GapFactorView({ gapFactors }: { gapFactors: GapFactorVm[] }) {
 }
 
 function DataConfidenceView({ dataQuality }: { dataQuality: DataConfidenceVm[] }) {
+  if (dataQuality.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No data confidence metrics are available.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

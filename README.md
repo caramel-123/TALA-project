@@ -24,6 +24,10 @@ Supabase client:
 Feature APIs:
 
 - [src/features/overview/api/overview.ts](src/features/overview/api/overview.ts)
+- [src/features/overview/api/get-overview-kpis.ts](src/features/overview/api/get-overview-kpis.ts)
+- [src/features/overview/api/get-overview-dashboard-data.ts](src/features/overview/api/get-overview-dashboard-data.ts)
+- [src/features/overview/api/get-priority-regions.ts](src/features/overview/api/get-priority-regions.ts)
+- [src/features/overview/api/get-regional-profiles.ts](src/features/overview/api/get-regional-profiles.ts)
 - [src/features/diagnose/api/diagnose.ts](src/features/diagnose/api/diagnose.ts)
 - [src/features/advise/api/advise.ts](src/features/advise/api/advise.ts)
 - [src/features/data-manager/api/data-manager.ts](src/features/data-manager/api/data-manager.ts)
@@ -49,20 +53,88 @@ Tables and views used by screens include:
 - `ingestion_batches` (view)
 - `data_quality_issues` (view)
 - `v_data_source_registry`, `v_validation_issue_summary`, `v_region_data_quality_latest`
+- `division_priority_metrics` (view)
 
 New operational/seed migrations for app screens:
 
 - [supabase/migrations/0008_domain_operational_tables.sql](supabase/migrations/0008_domain_operational_tables.sql)
 - [supabase/migrations/0009_seed_regions_programs_demo.sql](supabase/migrations/0009_seed_regions_programs_demo.sql)
+- [supabase/migrations/0010_dashboard_story_seed_enhancement.sql](supabase/migrations/0010_dashboard_story_seed_enhancement.sql)
+- [supabase/migrations/0011_overview_kpi_priority_metrics_and_density_seed.sql](supabase/migrations/0011_overview_kpi_priority_metrics_and_density_seed.sql)
+- [supabase/migrations/0012_prototype_public_read_access.sql](supabase/migrations/0012_prototype_public_read_access.sql)
+- [supabase/migrations/0013_dashboard_public_read_policies.sql](supabase/migrations/0013_dashboard_public_read_policies.sql)
+
+## Overview KPI Computation Rules
+
+The four Overview KPI cards are computed from Supabase data in [src/features/overview/api/get-overview-kpis.ts](src/features/overview/api/get-overview-kpis.ts).
+
+1. Active Regions
+
+- Definition: unique regions with planning/operations signals in any of these sources:
+  - `regional_context.region_id`
+  - `divisions.region_id`
+  - `teachers.region_id`
+  - inferred region from `schools.division_id -> divisions.region_id`
+- Formula: `count(distinct region_id)` across merged region IDs.
+
+2. Data Completeness
+
+- Definition: weighted required-field completeness across teacher, school, division, and regional context records.
+- Field-level completeness per table:
+  - Teacher required fields: `teacher_code`, `region_id`, `division_id`, `school_id`, `specialization`, `years_experience`
+  - School required fields: `school_id_code`, `school_name`, `division_id`
+  - Division required fields: `division_code`, `division_name`, `region_id`
+  - Regional context required fields: `region_id`, `star_coverage_pct`, `underserved_score`, `data_quality_score`, `data_completeness_pct`
+- Weighted rollup formula:
+  - `teachers * 0.45 + schools * 0.20 + divisions * 0.15 + regional_context * 0.20`
+
+3. High-Priority Divisions
+
+- Primary source: `division_priority_metrics` view.
+- Threshold rule: `is_high_priority = (priority_score >= 70)`.
+- Priority score formula in SQL view:
+  - `(100 - star_coverage_rate) * 0.30`
+  - `+ specialization_mismatch_rate * 0.20`
+  - `+ (100 - mentor_access_score) * 0.15`
+  - `+ resource_constraint_score * 0.15`
+  - `+ connectivity_constraint_score * 0.10`
+  - `+ staffing_vulnerability_score * 0.10`
+- KPI value: count of rows where `is_high_priority = true`.
+
+4. Teachers Profiled
+
+- Definition: teacher rows considered profile-complete for planning-level analysis.
+- Included row criteria:
+  - non-empty `teacher_code`
+  - non-null `region_id`
+  - non-null `division_id`
+  - non-null `school_id`
+- Formula: count of `teachers` rows meeting all criteria.
+
+Header metadata rules:
+
+- Last Updated: max timestamp from latest `regional_context.snapshot_date` and latest `upload_batches.started_at`.
+- Data Quality: average `quality_score` from `v_region_data_quality_latest`.
+
+Prototype access note:
+
+- Migrations `0012` and `0013` intentionally allow anon/select access for dashboard-read tables and views so development environments can show real Supabase-backed KPIs without requiring a signed-in session.
 
 ## Screen To Table Mapping
 
 - Overview:
-  - `regional_context`
-  - `training_participation`
+  - `regions`
+  - `divisions`
+  - `schools`
   - `teachers`
+  - `regional_context`
+  - `school_context`
+  - `training_participation`
   - `recommendations`
   - `star_programs`
+  - `upload_batches`
+  - `v_region_data_quality_latest`
+  - `division_priority_metrics`
 - Diagnose:
   - `regional_context`
   - `divisions`
@@ -76,6 +148,47 @@ New operational/seed migrations for app screens:
   - `v_data_source_registry`
   - `v_validation_issue_summary`
   - `v_region_data_quality_latest`
+  - `ingestion_batches`
+  - `data_quality_issues`
+
+## Seed Story Design
+
+The Supabase seed story intentionally models contrast between higher-need and higher-performing regions:
+
+- High-need focus regions with stronger constraint signals:
+  - `BARMM`
+  - `Region XIII - Caraga`
+  - `MIMAROPA`
+  - `Region VIII - Eastern Visayas`
+  - `CAR`
+- Contrast regions with stronger reach and better data quality:
+  - `NCR`
+  - `Region III - Central Luzon`
+
+Seeded patterns include:
+
+- all 17 regions in `regions`
+- varied underserved scores and coverage in `regional_context`
+- non-uniform training participation by program and region in `training_participation`
+- region-specific recommendation cards in `recommendations`
+- ingestion and validation variation in `data_sources`, `upload_batches`, and `validation_issues`
+- quality snapshots by region in `data_quality_snapshots`
+
+## Mock Data Removal Audit
+
+Dashboard pages no longer define business/demo datasets inline:
+
+- [src/app/pages/Overview.tsx](src/app/pages/Overview.tsx)
+- [src/app/pages/Diagnose.tsx](src/app/pages/Diagnose.tsx)
+- [src/app/pages/Advise.tsx](src/app/pages/Advise.tsx)
+- [src/app/pages/DataManager.tsx](src/app/pages/DataManager.tsx)
+
+Fallback data is centralized in one place:
+
+- [src/features/shared/dev-seed/index.ts](src/features/shared/dev-seed/index.ts)
+- [src/features/shared/dev-seed/non-dashboard.ts](src/features/shared/dev-seed/non-dashboard.ts)
+
+The fallback is only used when Supabase is unavailable or a query fails in development mode.
 
 ## Environment Variables
 
@@ -113,6 +226,30 @@ supabase db push
 ```
 
 Or apply SQL files manually in Supabase SQL Editor in migration order.
+
+## Reseed / Reset Workflow
+
+For remote environments:
+
+1. Apply latest migrations:
+
+```bash
+supabase db push --yes
+```
+
+For local environments:
+
+1. Reset and reseed local database from migrations:
+
+```bash
+supabase db reset
+```
+
+2. Start app normally:
+
+```bash
+npm run dev
+```
 
 ## Dev Fallback Mode
 

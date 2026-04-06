@@ -5,6 +5,7 @@ import { queryWithFallback } from '../../shared/api/query-with-fallback';
 import type {
   DataManagerPageVm,
   DataSourceVm,
+  IngestionBatchVm,
   RegionalDataQualityVm,
   ValidationIssueVm,
 } from '../../shared/types/view-models';
@@ -103,6 +104,34 @@ async function fetchRegionalDataQualityFromSupabase(): Promise<RegionalDataQuali
   }));
 }
 
+async function fetchIngestionBatchesFromSupabase(): Promise<IngestionBatchVm[]> {
+  if (!supabase) {
+    throw new Error('Supabase client is not available.');
+  }
+
+  const response = await supabase
+    .from('ingestion_batches')
+    .select('id, source_name, file_name, upload_status, row_count, started_at, completed_at')
+    .order('started_at', { ascending: false })
+    .limit(10);
+
+  if (response.error) {
+    throw response.error;
+  }
+
+  const rows = (response.data || []) as Array<Record<string, any>>;
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    sourceName: row.source_name || 'Unknown Source',
+    fileName: row.file_name || 'Unknown File',
+    uploadStatus: normalizeSourceStatus(row.upload_status || 'pending_review'),
+    rowCount: Number(row.row_count || 0),
+    startedAt: formatDateLabel(row.started_at),
+    completedAt: formatDateLabel(row.completed_at),
+  }));
+}
+
 export async function getDataSources() {
   return queryWithFallback(fetchDataSourcesFromSupabase, devSeed.dataManager.dataSources, 'Data Manager sources');
 }
@@ -113,6 +142,10 @@ export async function getValidationIssues() {
 
 export async function getRegionalDataQuality() {
   return queryWithFallback(fetchRegionalDataQualityFromSupabase, devSeed.dataManager.dataQualityByRegion, 'regional data quality');
+}
+
+export async function getIngestionBatches() {
+  return queryWithFallback(fetchIngestionBatchesFromSupabase, [], 'ingestion batches');
 }
 
 export async function getDataManagerPageData() {

@@ -19,6 +19,11 @@ export function Overview() {
   const [showFilter, setShowFilter] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
 
+  const hasPriorityRegions = overviewData.priorityRegions.length > 0;
+  const hasTrainingReach = overviewData.trainingReachData.length > 0;
+  const hasSpecialization = overviewData.specializationData.length > 0;
+  const hasTrend = overviewData.participationTrend.length > 0;
+
   useEffect(() => {
     let isMounted = true;
 
@@ -87,7 +92,7 @@ export function Overview() {
             Last updated: {overviewData.lastUpdated} • Data Quality: {overviewData.dataQuality}%
           </p>
           <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4' }}>
-            {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected to Supabase'}
+            {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
           </p>
           {loadError && (
             <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B' }}>
@@ -194,6 +199,11 @@ export function Overview() {
                 </p>
               </div>
             )}
+            {!isLoading && !hasPriorityRegions && (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No priority regions available for the selected filters.
+              </div>
+            )}
             <div className="space-y-4">
               {overviewData.priorityRegions.map((region, index) => (
                 <div 
@@ -263,27 +273,33 @@ export function Overview() {
             >
               Training Reach by Program
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={overviewData.trainingReachData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
-                <XAxis 
-                  dataKey="program" 
-                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-                />
-                <YAxis 
-                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    border: '1px solid #D8D8D8',
-                    fontFamily: 'Arial, sans-serif',
-                    fontSize: '11px'
-                  }}
-                />
-                <Bar dataKey="reach" fill="#2E6DA4" />
-              </BarChart>
-            </ResponsiveContainer>
+            {!isLoading && !hasTrainingReach ? (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No training participation records are available yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={overviewData.trainingReachData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
+                  <XAxis 
+                    dataKey="program" 
+                    tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#FFFFFF', 
+                      border: '1px solid #D8D8D8',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '11px'
+                    }}
+                  />
+                  <Bar dataKey="reach" fill="#2E6DA4" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           {/* Teacher Specialization Distribution */}
@@ -299,32 +315,38 @@ export function Overview() {
             >
               Teacher Specialization
             </h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={overviewData.specializationData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={(entry) => `${entry.name} ${entry.value}%`}
-                >
-                  {overviewData.specializationData.map((entry, index) => (
-                    <Cell key={`specialization-cell-${entry.name}-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    border: '1px solid #D8D8D8',
-                    fontFamily: 'Arial, sans-serif',
-                    fontSize: '11px'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {!isLoading && !hasSpecialization ? (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No teacher specialization distribution is available yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={overviewData.specializationData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={(entry) => `${entry.name} ${entry.value}%`}
+                  >
+                    {overviewData.specializationData.map((entry, index) => (
+                      <Cell key={`specialization-cell-${entry.name}-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#FFFFFF', 
+                      border: '1px solid #D8D8D8',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '11px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -341,33 +363,39 @@ export function Overview() {
           >
             Participation Trend (2026)
           </h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={overviewData.participationTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
-              <XAxis 
-                dataKey="month" 
-                tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-              />
-              <YAxis 
-                tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#FFFFFF', 
-                  border: '1px solid #D8D8D8',
-                  fontFamily: 'Arial, sans-serif',
-                  fontSize: '11px'
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="teachers" 
-                stroke="#2E6DA4" 
-                strokeWidth={3}
-                dot={{ fill: '#2E6DA4', r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {!isLoading && !hasTrend ? (
+            <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+              No monthly participation trend is available yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={overviewData.participationTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                />
+                <YAxis 
+                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#FFFFFF', 
+                    border: '1px solid #D8D8D8',
+                    fontFamily: 'Arial, sans-serif',
+                    fontSize: '11px'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="teachers" 
+                  stroke="#2E6DA4" 
+                  strokeWidth={3}
+                  dot={{ fill: '#2E6DA4', r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

@@ -36,6 +36,16 @@ export type ParticipationTrendVm = {
   teachers: number;
 };
 
+export type RegionalProfileSummaryVm = {
+  regionCode: string;
+  region: string;
+  teacherPopulation: number;
+  starCoverage: number;
+  underservedScore: number;
+  dataQuality: number;
+  highPriorityDivisions: number;
+};
+
 export type OverviewDashboardVm = {
   lastUpdated: string;
   dataQuality: number;
@@ -157,6 +167,16 @@ export type RegionalDataQualityVm = {
   score: number;
   completeness: number;
   recency: string;
+};
+
+export type IngestionBatchVm = {
+  id: string;
+  sourceName: string;
+  fileName: string;
+  uploadStatus: SourceStatus;
+  rowCount: number;
+  startedAt: string;
+  completedAt: string;
 };
 
 export type DataManagerPageVm = {

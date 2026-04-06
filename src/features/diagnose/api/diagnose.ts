@@ -44,6 +44,10 @@ type SchoolContextRow = {
   underserved_score: number;
 };
 
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function statusFromScore(score: number): DivisionVm['status'] {
   if (score >= 8) {
     return 'critical';
@@ -103,10 +107,47 @@ async function resolveRegion(regionCodeOrId = '040000000'): Promise<RegionLookup
     throw new Error('Supabase client is not available.');
   }
 
+  const fallbackRegion = async (): Promise<RegionLookupRow> => {
+    const preferred = await supabase
+      .from('regions')
+      .select('id, psgc_code, region_name')
+      .eq('psgc_code', '040000000')
+      .maybeSingle();
+
+    if (preferred.error) {
+      throw preferred.error;
+    }
+
+    const preferredData = preferred.data as RegionLookupRow | null;
+    if (preferredData) {
+      return preferredData;
+    }
+
+    const firstAvailable = await supabase
+      .from('regions')
+      .select('id, psgc_code, region_name')
+      .order('region_name', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (firstAvailable.error) {
+      throw firstAvailable.error;
+    }
+
+    const firstAvailableData = firstAvailable.data as RegionLookupRow | null;
+    if (firstAvailableData) {
+      return firstAvailableData;
+    }
+
+    throw new Error('No regions are available in Supabase.');
+  };
+
+  const regionInput = regionCodeOrId.trim();
+
   const byCode = await supabase
     .from('regions')
     .select('id, psgc_code, region_name')
-    .eq('psgc_code', regionCodeOrId)
+    .eq('psgc_code', regionInput)
     .maybeSingle();
 
   if (byCode.error) {
@@ -117,22 +158,24 @@ async function resolveRegion(regionCodeOrId = '040000000'): Promise<RegionLookup
     return byCodeData;
   }
 
-  const byId = await supabase
-    .from('regions')
-    .select('id, psgc_code, region_name')
-    .eq('id', regionCodeOrId)
-    .maybeSingle();
+  if (isUuidLike(regionInput)) {
+    const byId = await supabase
+      .from('regions')
+      .select('id, psgc_code, region_name')
+      .eq('id', regionInput)
+      .maybeSingle();
 
-  if (byId.error) {
-    throw byId.error;
+    if (byId.error) {
+      throw byId.error;
+    }
+
+    const byIdData = (byId.data as RegionLookupRow | null);
+    if (byIdData) {
+      return byIdData;
+    }
   }
 
-  const byIdData = (byId.data as RegionLookupRow | null);
-  if (byIdData) {
-    return byIdData;
-  }
-
-  throw new Error('Region not found in Supabase.');
+  return fallbackRegion();
 }
 
 async function fetchDiagnosePageDataFromSupabase(regionCodeOrId = '040000000'): Promise<DiagnosePageVm> {
@@ -271,6 +314,10 @@ export async function getRegionalProfile(regionIdOrCode = '040000000') {
   );
 }
 
+export async function getRegionalProfileByCode(regionCode: string) {
+  return getRegionalProfile(regionCode);
+}
+
 export async function getDivisionBreakdown(regionIdOrCode = '040000000') {
   return queryWithFallback<DivisionVm[]>(
     async () => {
@@ -279,6 +326,17 @@ export async function getDivisionBreakdown(regionIdOrCode = '040000000') {
     },
     devSeed.diagnose.divisions,
     'division breakdown',
+  );
+}
+
+export async function getGapFactors(regionIdOrCode = '040000000') {
+  return queryWithFallback<DiagnosePageVm['gapFactors']>(
+    async () => {
+      const data = await fetchDiagnosePageDataFromSupabase(regionIdOrCode);
+      return data.gapFactors;
+    },
+    devSeed.diagnose.gapFactors,
+    'gap factors',
   );
 }
 

@@ -111,7 +111,7 @@ export function Advise() {
         </div>
 
         <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4', marginBottom: '12px' }}>
-          {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected to Supabase'}
+          {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
         </p>
         {loadError && (
           <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B', marginBottom: '12px' }}>
@@ -133,6 +133,11 @@ export function Advise() {
             >
               Recommendation Queue
             </h2>
+            {!isLoading && recommendations.length === 0 && (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No recommendations are available yet for review.
+              </div>
+            )}
             <div className="space-y-3">
               {recommendations.map((rec) => (
                 <div
@@ -400,6 +405,11 @@ export function Advise() {
               >
                 STAR Intervention Portfolio
               </h3>
+              {!isLoading && interventionPortfolio.length === 0 && (
+                <div className="p-3 rounded mb-3" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                  No intervention programs are available in the portfolio.
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {interventionPortfolio.map((intervention, index) => (
                   <div 
