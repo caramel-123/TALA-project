@@ -8,18 +8,29 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REGIONS = [
-    ("130000000", "NCR"),
-    ("040000000", "Region IV-A"),
-    ("120000000", "Region XII"),
-    ("190000000", "BARMM"),
+    ("130000000", "NCR", ["NCR", "National Capital Region", "Metro Manila"]),
+    ("040000000", "Region IV-A", ["Region IV-A", "CALABARZON", "Calabarzon"]),
+    ("120000000", "Region XII", ["Region XII", "SOCCSKSARGEN", "Region 12"]),
+    ("190000000", "BARMM", ["BARMM", "Bangsamoro", "Bangsamoro Autonomous Region"]),
 ]
 
-SPECIALIZATIONS = [
-    "Mathematics",
-    "Science",
-    "Languages",
-    "General Education",
-    "ICT",
+SPECIALIZATION_VARIANTS = {
+    "science": ["Sci", "Science", "General Science"],
+    "mathematics": ["Math", "Mathematics", "Gen Math"],
+    "languages": ["Language Arts", "Languages", "English"],
+    "general_education": ["General Education", "Gen Ed", "Elementary Generalist"],
+    "ict": ["ICT", "Information Technology", "Comp Tech"],
+}
+
+BOOLEAN_VARIANTS_TRUE = ["yes", "Yes", "Y"]
+BOOLEAN_VARIANTS_FALSE = ["no", "No", "N"]
+
+DATE_FORMATS = [
+    "%Y-%m-%d",
+    "%m/%d/%Y",
+    "%d-%b-%Y",
+    "%b %d, %Y",
+    "%Y/%m/%d",
 ]
 
 ISSUE_MARKERS = [
@@ -34,7 +45,27 @@ ISSUE_MARKERS = [
 
 def rand_date(days_back=120):
     d = datetime.now(timezone.utc) - timedelta(days=random.randint(0, days_back))
-    return d.strftime("%Y-%m-%d")
+    return d.strftime(random.choice(DATE_FORMATS))
+
+
+def maybe_missing(value, probability=0.08):
+    if random.random() < probability:
+        return ""
+    return value
+
+
+def pick_region_values():
+    region_code, canonical_region, aliases = random.choice(REGIONS)
+    return region_code, canonical_region, random.choice(aliases)
+
+
+def pick_specialization_variant():
+    bucket = random.choice(list(SPECIALIZATION_VARIANTS.keys()))
+    return random.choice(SPECIALIZATION_VARIANTS[bucket])
+
+
+def pick_boolean_variant():
+    return random.choice(BOOLEAN_VARIANTS_TRUE + BOOLEAN_VARIANTS_FALSE)
 
 
 def write_csv(path, rows, fieldnames):
@@ -48,7 +79,7 @@ def write_csv(path, rows, fieldnames):
 def generate_teachers(n):
     rows = []
     for i in range(1, n + 1):
-        region_code, region_name = random.choice(REGIONS)
+        region_code, canonical_region, region_variant = pick_region_values()
         teacher_id = f"TCH-{i:06d}"
         issue_marker = random.choices(
             ISSUE_MARKERS, weights=[80, 5, 4, 5, 4, 2], k=1
@@ -56,20 +87,22 @@ def generate_teachers(n):
 
         row = {
             "teacher_external_id": teacher_id,
-            "teacher_name": f"Teacher {i}",
-            "region_code": region_code,
-            "region_name": region_name,
+            "teacher_name": maybe_missing(f"Teacher {i}", 0.03),
+            "region_code": maybe_missing(region_code, 0.02),
+            "region_name": maybe_missing(region_variant, 0.03),
+            "canonical_region": canonical_region,
             "division_code": f"DIV-{random.randint(1, 20):03d}",
             "school_id_code": f"SCH-{random.randint(1, 200):05d}",
-            "specialization": random.choice(SPECIALIZATIONS),
-            "years_experience": random.randint(0, 35),
-            "training_hours_last_12m": random.randint(0, 120),
-            "submitted_at": rand_date(),
+            "specialization": maybe_missing(pick_specialization_variant(), 0.08),
+            "years_experience": maybe_missing(random.randint(0, 35), 0.05),
+            "training_hours_last_12m": maybe_missing(random.randint(0, 120), 0.05),
+            "consent_flag": maybe_missing(pick_boolean_variant(), 0.06),
+            "submitted_at": maybe_missing(rand_date(), 0.04),
             "issue_marker": issue_marker,
         }
 
         if issue_marker == "missing_field":
-            row["specialization"] = ""
+            row[random.choice(["specialization", "teacher_name", "region_name"])] = ""
         elif issue_marker == "format_mismatch":
             row["years_experience"] = "ten"
         elif issue_marker == "out_of_range":
@@ -92,16 +125,19 @@ def generate_training(n):
         "Language Strategies",
     ]
     for i in range(1, n + 1):
-        region_code, region_name = random.choice(REGIONS)
+        region_code, canonical_region, region_variant = pick_region_values()
         rows.append(
             {
                 "attendance_id": f"ATT-{i:06d}",
                 "teacher_external_id": f"TCH-{random.randint(1, n):06d}",
                 "program_name": random.choice(programs),
-                "session_date": rand_date(180),
-                "hours": random.randint(1, 16),
-                "region_code": region_code,
-                "region_name": region_name,
+                "session_date": maybe_missing(rand_date(180), 0.05),
+                "hours": maybe_missing(random.randint(1, 16), 0.05),
+                "specialization_reported": maybe_missing(pick_specialization_variant(), 0.09),
+                "attended": maybe_missing(pick_boolean_variant(), 0.05),
+                "region_code": maybe_missing(region_code, 0.02),
+                "region_name": maybe_missing(region_variant, 0.03),
+                "canonical_region": canonical_region,
             }
         )
     return rows
@@ -110,17 +146,18 @@ def generate_training(n):
 def generate_infrastructure(n):
     rows = []
     for i in range(1, n + 1):
-        region_code, region_name = random.choice(REGIONS)
+        region_code, canonical_region, region_variant = pick_region_values()
         rows.append(
             {
                 "survey_id": f"INF-{i:06d}",
                 "school_id_code": f"SCH-{random.randint(1, 200):05d}",
-                "region_code": region_code,
-                "region_name": region_name,
-                "has_science_lab": random.choice([0, 1]),
-                "has_internet": random.choice([0, 1]),
-                "classroom_condition_score": random.randint(40, 100),
-                "submitted_at": rand_date(90),
+                "region_code": maybe_missing(region_code, 0.03),
+                "region_name": maybe_missing(region_variant, 0.04),
+                "canonical_region": canonical_region,
+                "has_science_lab": maybe_missing(pick_boolean_variant(), 0.08),
+                "has_internet": maybe_missing(pick_boolean_variant(), 0.08),
+                "classroom_condition_score": maybe_missing(random.randint(40, 100), 0.05),
+                "submitted_at": maybe_missing(rand_date(90), 0.05),
             }
         )
     return rows
@@ -129,17 +166,18 @@ def generate_infrastructure(n):
 def generate_remote_classification(n):
     rows = []
     for i in range(1, n + 1):
-        region_code, region_name = random.choice(REGIONS)
+        region_code, canonical_region, region_variant = pick_region_values()
         rows.append(
             {
                 "geo_id": f"GEO-{i:06d}",
                 "school_id_code": f"SCH-{random.randint(1, 200):05d}",
-                "region_code": region_code,
-                "region_name": region_name,
-                "is_remote": random.choice([0, 1]),
-                "travel_time_minutes": random.randint(10, 360),
-                "road_access_score": random.randint(1, 5),
-                "updated_at": rand_date(365),
+                "region_code": maybe_missing(region_code, 0.03),
+                "region_name": maybe_missing(region_variant, 0.05),
+                "canonical_region": canonical_region,
+                "is_remote": maybe_missing(pick_boolean_variant(), 0.06),
+                "travel_time_minutes": maybe_missing(random.randint(10, 360), 0.04),
+                "road_access_score": maybe_missing(random.randint(1, 5), 0.04),
+                "updated_at": maybe_missing(rand_date(365), 0.04),
             }
         )
     return rows

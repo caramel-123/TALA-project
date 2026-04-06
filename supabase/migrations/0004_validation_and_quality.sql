@@ -21,6 +21,7 @@ create index if not exists idx_validation_issues_batch_id on public.validation_i
 create index if not exists idx_validation_issues_type_severity on public.validation_issues(issue_type, severity);
 create index if not exists idx_validation_issues_resolved on public.validation_issues(is_resolved);
 
+drop trigger if exists trg_validation_issues_updated_at on public.validation_issues;
 create trigger trg_validation_issues_updated_at
 before update on public.validation_issues
 for each row
@@ -43,6 +44,7 @@ comment on column public.validation_actions.reviewer_id is 'User that applied th
 create index if not exists idx_validation_actions_issue_id on public.validation_actions(issue_id);
 create index if not exists idx_validation_actions_reviewer_id on public.validation_actions(reviewer_id);
 
+drop trigger if exists trg_validation_actions_updated_at on public.validation_actions;
 create trigger trg_validation_actions_updated_at
 before update on public.validation_actions
 for each row
@@ -68,6 +70,7 @@ comment on column public.data_quality_snapshots.validation_status is 'Current ov
 create index if not exists idx_data_quality_snapshots_region_date
   on public.data_quality_snapshots(region_id, snapshot_date desc);
 
+drop trigger if exists trg_data_quality_snapshots_updated_at on public.data_quality_snapshots;
 create trigger trg_data_quality_snapshots_updated_at
 before update on public.data_quality_snapshots
 for each row

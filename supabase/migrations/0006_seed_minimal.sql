@@ -163,7 +163,7 @@ select
   b.id,
   format('TCH-%s', lpad(gs::text, 6, '0')),
   format('Teacher %s', gs),
-  encode(digest(format('teacher-%s', gs), 'sha256'), 'hex'),
+  encode(extensions.digest(format('teacher-%s', gs), 'sha256'::text), 'hex'),
   (array['Mathematics', 'Science', 'Languages', 'General Education'])[((gs - 1) % 4) + 1],
   s.id,
   r.id,

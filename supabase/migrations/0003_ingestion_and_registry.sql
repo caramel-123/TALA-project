@@ -22,6 +22,7 @@ comment on column public.data_sources.coverage_label is 'Optional display label 
 create index if not exists idx_data_sources_region_id on public.data_sources(region_id);
 create index if not exists idx_data_sources_status on public.data_sources(status);
 
+drop trigger if exists trg_data_sources_updated_at on public.data_sources;
 create trigger trg_data_sources_updated_at
 before update on public.data_sources
 for each row
@@ -49,6 +50,7 @@ comment on column public.upload_batches.storage_path is 'Storage path in Supabas
 create index if not exists idx_upload_batches_source_id on public.upload_batches(data_source_id);
 create index if not exists idx_upload_batches_status on public.upload_batches(upload_status);
 
+drop trigger if exists trg_upload_batches_updated_at on public.upload_batches;
 create trigger trg_upload_batches_updated_at
 before update on public.upload_batches
 for each row
@@ -78,6 +80,7 @@ create index if not exists idx_teacher_records_staging_batch_id on public.teache
 create index if not exists idx_teacher_records_staging_region_id on public.teacher_records_staging(region_id);
 create index if not exists idx_teacher_records_staging_school_id on public.teacher_records_staging(school_id);
 
+drop trigger if exists trg_teacher_records_staging_updated_at on public.teacher_records_staging;
 create trigger trg_teacher_records_staging_updated_at
 before update on public.teacher_records_staging
 for each row

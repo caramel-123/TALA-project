@@ -23,6 +23,7 @@ comment on table public.regions is 'Region reference list used across all data m
 comment on column public.regions.psgc_code is 'PSGC code for region-level geographic identification.';
 comment on column public.regions.region_name is 'Canonical region name shown in dashboards.';
 
+drop trigger if exists trg_regions_updated_at on public.regions;
 create trigger trg_regions_updated_at
 before update on public.regions
 for each row
@@ -44,6 +45,7 @@ comment on column public.divisions.region_id is 'FK to parent region scope.';
 
 create index if not exists idx_divisions_region_id on public.divisions(region_id);
 
+drop trigger if exists trg_divisions_updated_at on public.divisions;
 create trigger trg_divisions_updated_at
 before update on public.divisions
 for each row
@@ -64,6 +66,7 @@ comment on column public.schools.is_remote is 'True when school is classified as
 
 create index if not exists idx_schools_division_id on public.schools(division_id);
 
+drop trigger if exists trg_schools_updated_at on public.schools;
 create trigger trg_schools_updated_at
 before update on public.schools
 for each row
@@ -89,6 +92,7 @@ comment on column public.app_users_profile.role is 'App-specific role used by RL
 
 create index if not exists idx_app_users_profile_region_id on public.app_users_profile(region_id);
 
+drop trigger if exists trg_app_users_profile_updated_at on public.app_users_profile;
 create trigger trg_app_users_profile_updated_at
 before update on public.app_users_profile
 for each row
