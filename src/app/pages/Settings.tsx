@@ -2,43 +2,7 @@ import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { Users, Shield, Clock, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
-
-const users = [
-  { name: 'Maria Santos', email: 'maria.santos@deped.gov.ph', role: 'National Admin', status: 'Active', lastLogin: 'April 5, 2026' },
-  { name: 'Juan dela Cruz', email: 'juan.delacruz@deped.gov.ph', role: 'Regional Implementer', status: 'Active', lastLogin: 'April 4, 2026' },
-  { name: 'Pedro Reyes', email: 'pedro.reyes@deped.gov.ph', role: 'Data Steward', status: 'Active', lastLogin: 'April 3, 2026' },
-  { name: 'Ana Garcia', email: 'ana.garcia@deped.gov.ph', role: 'Read-Only Viewer', status: 'Active', lastLogin: 'March 30, 2026' },
-];
-
-const roles = [
-  { 
-    name: 'National Admin', 
-    permissions: ['Full system access', 'User management', 'Data governance', 'All modules'],
-    users: 2 
-  },
-  { 
-    name: 'Regional Implementer', 
-    permissions: ['Diagnose module', 'Advise module', 'Reports', 'Regional data only'],
-    users: 8 
-  },
-  { 
-    name: 'Data Steward', 
-    permissions: ['Data Manager', 'Quality reports', 'Validation', 'Upload data'],
-    users: 5 
-  },
-  { 
-    name: 'Read-Only Viewer', 
-    permissions: ['View dashboards', 'View reports', 'No edit access'],
-    users: 12 
-  },
-];
-
-const auditLog = [
-  { user: 'Maria Santos', action: 'Approved intervention plan', module: 'Advise', timestamp: 'April 5, 2026 10:30 AM' },
-  { user: 'Pedro Reyes', action: 'Uploaded teacher dataset', module: 'Data Manager', timestamp: 'April 5, 2026 09:15 AM' },
-  { user: 'Juan dela Cruz', action: 'Generated regional report', module: 'Reports', timestamp: 'April 4, 2026 04:20 PM' },
-  { user: 'Maria Santos', action: 'Modified user permissions', module: 'Settings', timestamp: 'April 4, 2026 02:00 PM' },
-];
+import { settingsAuditLog as auditLog, settingsRoles as roles, settingsUsers as users } from '../../features/shared/dev-seed/non-dashboard';
 
 export function Settings() {
   const handleInviteUser = () => {

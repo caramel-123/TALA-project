@@ -1,69 +1,66 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { StatusBadge } from '../components/dashboard/StatusBadge';
-import { CheckCircle, XCircle, AlertCircle, FileText, ChevronRight } from 'lucide-react';
+import { CheckCircle, AlertCircle, FileText, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
-
-const recommendations = [
-  {
-    id: 1,
-    region: 'Region XII - SOCCSKSARGEN',
-    score: 8.7,
-    gap: 'Specialization Gap',
-    interventions: ['Inquiry-Based Science (7E Model)', 'Teaching Mathematics through Problem Solving'],
-    status: 'pending' as const,
-    confidence: 'high' as const,
-    deliveryMethod: 'Blended',
-    resourceRequirement: 'Medium',
-  },
-  {
-    id: 2,
-    region: 'Region V - Bicol',
-    score: 8.4,
-    gap: 'Remote Access',
-    interventions: ['Assessment for Blended Learning', 'Science & Math Improvisation'],
-    status: 'pending' as const,
-    confidence: 'high' as const,
-    deliveryMethod: 'Alternative',
-    resourceRequirement: 'High',
-  },
-  {
-    id: 3,
-    region: 'BARMM',
-    score: 8.2,
-    gap: 'Teacher Coverage',
-    interventions: ['Language Strategies', 'Interdisciplinary Contextualization'],
-    status: 'pending' as const,
-    confidence: 'moderate' as const,
-    deliveryMethod: 'Face-to-face',
-    resourceRequirement: 'High',
-  },
-];
-
-const interventionPortfolio = [
-  'Teaching Mathematics through Problem Solving',
-  'Inquiry-Based Science (7E Model)',
-  'Interdisciplinary Contextualization',
-  'Language Strategies',
-  'Design Thinking',
-  'Assessment for Blended Learning',
-  'Science & Math Improvisation',
-];
+import { getAdvisePageData } from '../../features/advise/api/advise';
+import { devSeed } from '../../features/shared/dev-seed';
+import type { RecommendationVm } from '../../features/shared/types/view-models';
 
 export function Advise() {
-  const [selectedRec, setSelectedRec] = useState(recommendations[0]);
+  const [recommendations, setRecommendations] = useState(devSeed.advise.recommendations);
+  const [interventionPortfolio, setInterventionPortfolio] = useState(devSeed.advise.interventionPortfolio);
+  const [selectedRec, setSelectedRec] = useState<RecommendationVm | null>(devSeed.advise.recommendations[0] || null);
   const [plannerNotes, setPlannerNotes] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAdviseData() {
+      setIsLoading(true);
+      const result = await getAdvisePageData();
+
+      if (!isMounted) {
+        return;
+      }
+
+      setRecommendations(result.data.recommendations);
+      setInterventionPortfolio(result.data.interventionPortfolio);
+      setSelectedRec(result.data.recommendations[0] || null);
+      setUsingFallback(result.usingFallback);
+      setLoadError(result.error);
+      setIsLoading(false);
+    }
+
+    loadAdviseData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleApprove = () => {
+    if (!selectedRec) {
+      return;
+    }
     toast.success(`Intervention for ${selectedRec.region} approved and added to implementation queue`);
   };
 
   const handleDefer = () => {
+    if (!selectedRec) {
+      return;
+    }
     toast.info(`Recommendation for ${selectedRec.region} deferred for later review`);
   };
 
   const handleEscalate = () => {
+    if (!selectedRec) {
+      return;
+    }
     toast.warning(`${selectedRec.region} escalated to senior management for review`);
   };
 
@@ -109,9 +106,18 @@ export function Advise() {
         >
           <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#B8860B' }} />
           <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
-            <strong>3 regions</strong> pending review. Review recommendations and approve interventions to move them to the planning queue.
+            <strong>{recommendations.length} regions</strong> pending review. Review recommendations and approve interventions to move them to the planning queue.
           </div>
         </div>
+
+        <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4', marginBottom: '12px' }}>
+          {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
+        </p>
+        {loadError && (
+          <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B', marginBottom: '12px' }}>
+            Data warning: {loadError}
+          </p>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recommendation Queue */}
@@ -127,6 +133,11 @@ export function Advise() {
             >
               Recommendation Queue
             </h2>
+            {!isLoading && recommendations.length === 0 && (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No recommendations are available yet for review.
+              </div>
+            )}
             <div className="space-y-3">
               {recommendations.map((rec) => (
                 <div
@@ -134,13 +145,13 @@ export function Advise() {
                   onClick={() => setSelectedRec(rec)}
                   className={`
                     p-3 rounded border cursor-pointer transition-all
-                    ${selectedRec.id === rec.id 
+                    ${selectedRec?.id === rec.id 
                       ? 'border-2 bg-[#D5E8F7]' 
                       : 'hover:bg-[#EBF4FB]'
                     }
                   `}
                   style={{ 
-                    borderColor: selectedRec.id === rec.id ? '#2E6DA4' : '#D8D8D8' 
+                    borderColor: selectedRec?.id === rec.id ? '#2E6DA4' : '#D8D8D8' 
                   }}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -179,6 +190,13 @@ export function Advise() {
           {/* Intervention Detail Card */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
+              {!selectedRec && (
+                <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                  No recommendations available yet.
+                </div>
+              )}
+              {selectedRec && (
+                <>
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h2 
@@ -370,6 +388,8 @@ export function Advise() {
                   <FileText className="w-4 h-4" />
                 </button>
               </div>
+                </>
+              )}
             </div>
 
             {/* Intervention Portfolio Panel */}
@@ -385,6 +405,11 @@ export function Advise() {
               >
                 STAR Intervention Portfolio
               </h3>
+              {!isLoading && interventionPortfolio.length === 0 && (
+                <div className="p-3 rounded mb-3" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                  No intervention programs are available in the portfolio.
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {interventionPortfolio.map((intervention, index) => (
                   <div 

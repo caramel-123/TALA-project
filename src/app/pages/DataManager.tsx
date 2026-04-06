@@ -1,64 +1,62 @@
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { StatusBadge } from '../components/dashboard/StatusBadge';
-import { Upload, CheckCircle, AlertCircle, XCircle, Download } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
-
-const dataSources = [
-  {
-    name: 'DepEd Teacher Master List Q1 2026',
-    type: 'Teacher Records',
-    region: 'National',
-    records: 428950,
-    lastUpdated: 'March 30, 2026',
-    completeness: 94,
-    status: 'validated' as const,
-  },
-  {
-    name: 'STAR Training Attendance - Region IV-A',
-    type: 'Training Data',
-    region: 'Calabarzon',
-    records: 8240,
-    lastUpdated: 'April 2, 2026',
-    completeness: 89,
-    status: 'validated' as const,
-  },
-  {
-    name: 'School Infrastructure Survey',
-    type: 'Infrastructure',
-    region: 'Multi-region',
-    records: 12450,
-    lastUpdated: 'April 1, 2026',
-    completeness: 76,
-    status: 'pending' as const,
-  },
-  {
-    name: 'Remote Area Classification',
-    type: 'Geographic Data',
-    region: 'National',
-    records: 3280,
-    lastUpdated: 'March 15, 2026',
-    completeness: 68,
-    status: 'flagged' as const,
-  },
-];
-
-const validationIssues = [
-  { type: 'Missing required field', count: 142, severity: 'high' },
-  { type: 'Duplicate record', count: 38, severity: 'moderate' },
-  { type: 'Format mismatch', count: 89, severity: 'moderate' },
-  { type: 'Out-of-range value', count: 24, severity: 'high' },
-  { type: 'Provenance conflict', count: 12, severity: 'low' },
-];
-
-const dataQualityByRegion = [
-  { region: 'NCR', score: 96, completeness: 98, recency: 'Current' },
-  { region: 'Region IV-A', score: 89, completeness: 92, recency: 'Current' },
-  { region: 'Region XII', score: 84, completeness: 86, recency: 'Recent' },
-  { region: 'BARMM', score: 72, completeness: 74, recency: 'Outdated' },
-];
+import { useEffect, useState } from 'react';
+import { getDataManagerPageData } from '../../features/data-manager/api/data-manager';
+import { devSeed } from '../../features/shared/dev-seed';
+import type { DataManagerPageVm } from '../../features/shared/types/view-models';
 
 export function DataManager() {
+  const [pageData, setPageData] = useState<DataManagerPageVm>(devSeed.dataManager);
+  const [isLoading, setIsLoading] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const hasDataSources = pageData.dataSources.length > 0;
+  const hasValidationIssues = pageData.validationIssues.length > 0;
+  const hasRegionalQuality = pageData.dataQualityByRegion.length > 0;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDataManagerData() {
+      setIsLoading(true);
+
+      try {
+        const result = await getDataManagerPageData();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setPageData(result.data);
+        setUsingFallback(result.usingFallback);
+        setLoadError(result.error);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setPageData(devSeed.dataManager);
+        setUsingFallback(true);
+        setLoadError(error instanceof Error ? error.message : 'Unable to load Data Manager data.');
+        toast.error('Unable to load Supabase data. Showing demo values.');
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadDataManagerData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleUpload = () => {
     toast.info('File upload dialog would open here');
   };
@@ -100,6 +98,14 @@ export function DataManager() {
           <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
             IDA Integrate Layer - Control and validate all data feeding TALA
           </p>
+          <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4' }}>
+            {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
+          </p>
+          {loadError && (
+            <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B' }}>
+              Data warning: {loadError}
+            </p>
+          )}
         </div>
 
         {/* Upload Section */}
@@ -165,7 +171,14 @@ export function DataManager() {
                 </tr>
               </thead>
               <tbody>
-                {dataSources.map((source, index) => (
+                {!isLoading && !hasDataSources && (
+                  <tr>
+                    <td colSpan={7} className="p-4" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
+                      No data sources found. Upload a dataset to populate this registry.
+                    </td>
+                  </tr>
+                )}
+                {pageData.dataSources.map((source, index) => (
                   <tr 
                     key={index}
                     onClick={() => handleSourceClick(source.name)}
@@ -227,8 +240,13 @@ export function DataManager() {
             >
               Validation Issues
             </h2>
+            {!isLoading && !hasValidationIssues && (
+              <div className="p-3 rounded mb-3" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No validation issues were found for recent batches.
+              </div>
+            )}
             <div className="space-y-3">
-              {validationIssues.map((issue, index) => (
+              {pageData.validationIssues.map((issue, index) => (
                 <div 
                   key={index}
                   className="flex items-center justify-between p-3 rounded border"
@@ -299,8 +317,13 @@ export function DataManager() {
             >
               Data Quality by Region
             </h2>
+            {!isLoading && !hasRegionalQuality && (
+              <div className="p-3 rounded mb-3" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No regional quality snapshots are available yet.
+              </div>
+            )}
             <div className="space-y-4">
-              {dataQualityByRegion.map((region, index) => (
+              {pageData.dataQualityByRegion.map((region, index) => (
                 <div key={index} className="p-3 rounded" style={{ backgroundColor: '#EBF4FB' }}>
                   <div className="flex items-center justify-between mb-2">
                     <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>

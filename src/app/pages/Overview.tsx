@@ -1,54 +1,52 @@
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { KPICard } from '../components/dashboard/KPICard';
 import { StatusBadge } from '../components/dashboard/StatusBadge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Download, FileText, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { Filter } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
 import { PhilippinesMap } from '../components/maps/PhilippinesMap';
-
-const kpiData = [
-  { label: 'Active Regions', value: '17', trend: 'up' as const, trendValue: '+2 this quarter', accentColor: '#2E6DA4' },
-  { label: 'Data Completeness', value: '87%', trend: 'up' as const, trendValue: '+5%', accentColor: '#E8C94F' },
-  { label: 'High-Priority Divisions', value: '23', accentColor: '#B8860B' },
-  { label: 'Teachers Profiled', value: '45,892', trend: 'up' as const, trendValue: '+3,200', accentColor: '#1B3A5C' },
-];
-
-const priorityRegions = [
-  { region: 'Region XII - SOCCSKSARGEN', score: 8.7, gap: 'Specialization Gap', intervention: 'Inquiry-Based Science', confidence: 'high' as const },
-  { region: 'Region V - Bicol', score: 8.4, gap: 'Remote Access', intervention: 'Blended Delivery', confidence: 'high' as const },
-  { region: 'BARMM', score: 8.2, gap: 'Teacher Coverage', intervention: 'Assessment Training', confidence: 'moderate' as const },
-  { region: 'Region XIII - Caraga', score: 7.9, gap: 'Resource Access', intervention: 'Science Improvisation', confidence: 'high' as const },
-  { region: 'Region VIII - Eastern Visayas', score: 7.6, gap: 'Early Career Support', intervention: 'Teaching Math Problem Solving', confidence: 'moderate' as const },
-];
-
-const trainingReachData = [
-  { id: 'math', program: 'Math Problem Solving', reach: 8500 },
-  { id: 'science', program: 'Science Inquiry', reach: 7200 },
-  { id: 'language', program: 'Language Strategies', reach: 6800 },
-  { id: 'design', program: 'Design Thinking', reach: 5900 },
-  { id: 'assessment', program: 'Assessment', reach: 5200 },
-];
-
-const specializationData = [
-  { id: 'science', name: 'Science', value: 35, color: '#2E6DA4' },
-  { id: 'math', name: 'Mathematics', value: 30, color: '#A8C8E8' },
-  { id: 'languages', name: 'Languages', value: 20, color: '#E8C94F' },
-  { id: 'other', name: 'Other', value: 15, color: '#D8D8D8' },
-];
-
-const participationTrend = [
-  { id: 'jan', month: 'Jan', teachers: 2800 },
-  { id: 'feb', month: 'Feb', teachers: 3200 },
-  { id: 'mar', month: 'Mar', teachers: 3600 },
-  { id: 'apr', month: 'Apr', teachers: 4100 },
-];
+import { getOverviewDashboardData } from '../../features/overview/api/overview';
+import { devSeed } from '../../features/shared/dev-seed';
+import type { OverviewDashboardVm } from '../../features/shared/types/view-models';
 
 export function Overview() {
+  const [overviewData, setOverviewData] = useState<OverviewDashboardVm>(devSeed.overview);
+  const [isLoading, setIsLoading] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [hoveredMapRegion, setHoveredMapRegion] = useState<string | null>(null);
+
+  const hasPriorityRegions = overviewData.priorityRegions.length > 0;
+  const hasTrainingReach = overviewData.trainingReachData.length > 0;
+  const hasSpecialization = overviewData.specializationData.length > 0;
+  const hasTrend = overviewData.participationTrend.length > 0;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOverviewData() {
+      setIsLoading(true);
+      const result = await getOverviewDashboardData();
+
+      if (!isMounted) {
+        return;
+      }
+
+      setOverviewData(result.data);
+      setUsingFallback(result.usingFallback);
+      setLoadError(result.error);
+      setIsLoading(false);
+    }
+
+    loadOverviewData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleFilterClick = () => {
     setShowFilter(!showFilter);
@@ -71,15 +69,6 @@ export function Overview() {
     toast.info('Showing full heatmap');
   };
 
-  // Mock map regions for interactivity
-  const mapRegions = [
-    'Region XII - SOCCSKSARGEN',
-    'Region V - Bicol',
-    'BARMM',
-    'Region XIII - Caraga',
-    'Region VIII - Eastern Visayas',
-  ];
-
   return (
     <div className="flex-1">
       <Toaster />
@@ -100,13 +89,21 @@ export function Overview() {
             National Overview Dashboard
           </h1>
           <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
-            Last updated: April 5, 2026 • Data Quality: 87%
+            Last updated: {overviewData.lastUpdated} • Data Quality: {overviewData.dataQuality}%
           </p>
+          <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4' }}>
+            {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
+          </p>
+          {loadError && (
+            <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B' }}>
+              Data warning: {loadError}
+            </p>
+          )}
         </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {kpiData.map((kpi, index) => (
+          {overviewData.kpiData.map((kpi, index) => (
             <KPICard key={index} {...kpi} />
           ))}
         </div>
@@ -202,8 +199,13 @@ export function Overview() {
                 </p>
               </div>
             )}
+            {!isLoading && !hasPriorityRegions && (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No priority regions available for the selected filters.
+              </div>
+            )}
             <div className="space-y-4">
-              {priorityRegions.map((region, index) => (
+              {overviewData.priorityRegions.map((region, index) => (
                 <div 
                   key={index} 
                   onClick={() => handleRegionClick(region.region)}
@@ -271,27 +273,33 @@ export function Overview() {
             >
               Training Reach by Program
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={trainingReachData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
-                <XAxis 
-                  dataKey="program" 
-                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-                />
-                <YAxis 
-                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    border: '1px solid #D8D8D8',
-                    fontFamily: 'Arial, sans-serif',
-                    fontSize: '11px'
-                  }}
-                />
-                <Bar dataKey="reach" fill="#2E6DA4" />
-              </BarChart>
-            </ResponsiveContainer>
+            {!isLoading && !hasTrainingReach ? (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No training participation records are available yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={overviewData.trainingReachData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
+                  <XAxis 
+                    dataKey="program" 
+                    tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#FFFFFF', 
+                      border: '1px solid #D8D8D8',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '11px'
+                    }}
+                  />
+                  <Bar dataKey="reach" fill="#2E6DA4" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           {/* Teacher Specialization Distribution */}
@@ -307,32 +315,38 @@ export function Overview() {
             >
               Teacher Specialization
             </h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={specializationData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={(entry) => `${entry.name} ${entry.value}%`}
-                >
-                  {specializationData.map((entry, index) => (
-                    <Cell key={`specialization-cell-${entry.name}-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    border: '1px solid #D8D8D8',
-                    fontFamily: 'Arial, sans-serif',
-                    fontSize: '11px'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {!isLoading && !hasSpecialization ? (
+              <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+                No teacher specialization distribution is available yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={overviewData.specializationData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={(entry) => `${entry.name} ${entry.value}%`}
+                  >
+                    {overviewData.specializationData.map((entry, index) => (
+                      <Cell key={`specialization-cell-${entry.name}-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#FFFFFF', 
+                      border: '1px solid #D8D8D8',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '11px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -349,33 +363,39 @@ export function Overview() {
           >
             Participation Trend (2026)
           </h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={participationTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
-              <XAxis 
-                dataKey="month" 
-                tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-              />
-              <YAxis 
-                tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#FFFFFF', 
-                  border: '1px solid #D8D8D8',
-                  fontFamily: 'Arial, sans-serif',
-                  fontSize: '11px'
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="teachers" 
-                stroke="#2E6DA4" 
-                strokeWidth={3}
-                dot={{ fill: '#2E6DA4', r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {!isLoading && !hasTrend ? (
+            <div className="p-3 rounded" style={{ backgroundColor: '#EBF4FB', fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+              No monthly participation trend is available yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={overviewData.participationTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#D8D8D8" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                />
+                <YAxis 
+                  tick={{ fill: '#888888', fontSize: 10, fontFamily: 'Arial, sans-serif' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#FFFFFF', 
+                    border: '1px solid #D8D8D8',
+                    fontFamily: 'Arial, sans-serif',
+                    fontSize: '11px'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="teachers" 
+                  stroke="#2E6DA4" 
+                  strokeWidth={3}
+                  dot={{ fill: '#2E6DA4', r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

@@ -3,45 +3,7 @@ import { FileText, Download, Share2, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
 import { useState } from 'react';
-
-const reportTemplates = [
-  { name: 'Regional Brief', scope: 'Region/Division', icon: FileText },
-  { name: 'Division Summary', scope: 'Division', icon: FileText },
-  { name: 'Intervention Plan', scope: 'Multi-region', icon: FileText },
-  { name: 'Data Quality Report', scope: 'National', icon: FileText },
-  { name: 'National Overview', scope: 'National', icon: FileText },
-];
-
-const generatedReports = [
-  {
-    name: 'Region XII SOCCSKSARGEN Planning Brief',
-    type: 'Regional Brief',
-    scope: 'Region XII',
-    date: 'April 3, 2026',
-    generatedBy: 'Maria Santos',
-  },
-  {
-    name: 'Q1 2026 National Overview',
-    type: 'National Overview',
-    scope: 'National',
-    date: 'March 31, 2026',
-    generatedBy: 'Juan dela Cruz',
-  },
-  {
-    name: 'BARMM Intervention Planning Document',
-    type: 'Intervention Plan',
-    scope: 'BARMM',
-    date: 'March 28, 2026',
-    generatedBy: 'Maria Santos',
-  },
-  {
-    name: 'Data Quality Assessment - Calabarzon',
-    type: 'Data Quality Report',
-    scope: 'Region IV-A',
-    date: 'March 25, 2026',
-    generatedBy: 'Pedro Reyes',
-  },
-];
+import { generatedReports, reportTemplates } from '../../features/shared/dev-seed/non-dashboard';
 
 export function Reports() {
   const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'excel'>('pdf');

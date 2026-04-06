@@ -1,55 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { StatusBadge } from '../components/dashboard/StatusBadge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ChevronDown, Download, Flag, PlusCircle, MapPin } from 'lucide-react';
+import { Download, PlusCircle, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
-
-const sidebarItems = [
-  { id: 'profiler', label: 'Regional Profiler', active: true },
-  { id: 'division', label: 'Division View', active: false },
-  { id: 'cluster', label: 'School Cluster Map', active: false },
-  { id: 'cohort', label: 'Teacher Cohort Segments', active: false },
-  { id: 'score', label: 'Underserved Score Builder', active: false },
-  { id: 'gap', label: 'Gap Factor Analysis', active: false },
-  { id: 'confidence', label: 'Data Confidence Panel', active: false },
-];
-
-const regionData = {
-  name: 'Region IV-A Calabarzon',
-  teacherPopulation: 28450,
-  starCoverage: 72,
-  underservedScore: 6.8,
-  dataQuality: 89,
-  lastUpdated: 'March 28, 2026',
-};
-
-const gapFactors = [
-  { id: 'remote-access', factor: 'Remote/Island Access', contribution: 85, confidence: 'high' },
-  { id: 'specialization', factor: 'Teacher Specialization Gap', contribution: 72, confidence: 'high' },
-  { id: 'resources', factor: 'Resource Availability', contribution: 68, confidence: 'moderate' },
-  { id: 'training', factor: 'Training Infrastructure', contribution: 55, confidence: 'moderate' },
-  { id: 'connectivity', factor: 'Connectivity Issues', contribution: 48, confidence: 'high' },
-];
-
-const divisions = [
-  { name: 'Cavite', population: 8200, coverage: 78, gap: 'Specialization', score: 7.2, status: 'high' as const },
-  { name: 'Laguna', population: 7100, coverage: 68, gap: 'Access', score: 7.8, status: 'high' as const },
-  { name: 'Batangas', population: 6800, coverage: 74, gap: 'Resources', score: 6.9, status: 'critical' as const },
-  { name: 'Rizal', population: 4200, coverage: 82, gap: 'Infrastructure', score: 6.2, status: 'moderate' as const },
-  { name: 'Quezon', population: 2150, coverage: 58, gap: 'Remote Access', score: 8.4, status: 'critical' as const },
-];
-
-const cohorts = [
-  { name: 'Early Career', count: 8420, support: 'High', intervention: 'Foundational Training', confidence: 'high' },
-  { name: 'Mid Career', count: 12340, support: 'Moderate', intervention: 'Specialized Upskilling', confidence: 'high' },
-  { name: 'Senior', count: 6190, support: 'Low', intervention: 'Leadership Development', confidence: 'moderate' },
-  { name: 'Near Retirement', count: 1500, support: 'Low', intervention: 'Mentorship Programs', confidence: 'moderate' },
-];
+import { getDiagnosePageData } from '../../features/diagnose/api/diagnose';
+import { devSeed } from '../../features/shared/dev-seed';
+import type {
+  ClusterVm,
+  CohortVm,
+  DataConfidenceVm,
+  DiagnosePageVm,
+  DivisionVm,
+  GapFactorVm,
+  ScoreFactorVm,
+} from '../../features/shared/types/view-models';
 
 export function Diagnose() {
+  const [pageData, setPageData] = useState<DiagnosePageVm>(devSeed.diagnose);
+  const [isLoading, setIsLoading] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeSidebar, setActiveSidebar] = useState('profiler');
+
+  const { sidebarItems, regionData, gapFactors, divisions, cohorts, clusters, scoreFactors, dataQuality } = pageData;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDiagnoseData() {
+      setIsLoading(true);
+      const result = await getDiagnosePageData('040000000');
+
+      if (!isMounted) {
+        return;
+      }
+
+      setPageData(result.data);
+      setUsingFallback(result.usingFallback);
+      setLoadError(result.error);
+      setIsLoading(false);
+    }
+
+    loadDiagnoseData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleExportData = () => {
     toast.success('Exporting regional data to CSV...');
@@ -67,21 +66,21 @@ export function Diagnose() {
   const renderContent = () => {
     switch (activeSidebar) {
       case 'profiler':
-        return <RegionalProfilerView />;
+        return <RegionalProfilerView gapFactors={gapFactors} cohorts={cohorts} />;
       case 'division':
         return <DivisionView divisions={divisions} onDivisionClick={handleDivisionClick} />;
       case 'cluster':
-        return <ClusterMapView />;
+        return <ClusterMapView clusters={clusters} />;
       case 'cohort':
         return <TeacherCohortView cohorts={cohorts} />;
       case 'score':
-        return <UnderservedScoreView />;
+        return <UnderservedScoreView scoreFactors={scoreFactors} underservedScore={regionData.underservedScore} />;
       case 'gap':
         return <GapFactorView gapFactors={gapFactors} />;
       case 'confidence':
-        return <DataConfidenceView />;
+        return <DataConfidenceView dataQuality={dataQuality} />;
       default:
-        return <RegionalProfilerView />;
+        return <RegionalProfilerView gapFactors={gapFactors} cohorts={cohorts} />;
     }
   };
 
@@ -159,6 +158,14 @@ export function Diagnose() {
                   <span>•</span>
                   <span>Last Updated: {regionData.lastUpdated}</span>
                 </div>
+                <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: usingFallback ? '#B8860B' : '#2E6DA4', marginTop: '6px' }}>
+                  {isLoading ? 'Loading data from Supabase...' : usingFallback ? 'Using fallback demo data' : 'Live data connected'}
+                </div>
+                {loadError && (
+                  <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#B8860B', marginTop: '4px' }}>
+                    Data warning: {loadError}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <button 
@@ -230,7 +237,15 @@ export function Diagnose() {
 }
 
 // View Components
-function RegionalProfilerView() {
+function RegionalProfilerView({ gapFactors, cohorts }: { gapFactors: GapFactorVm[]; cohorts: CohortVm[] }) {
+  if (gapFactors.length === 0 && cohorts.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No regional profiler metrics are available yet.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -312,7 +327,15 @@ function RegionalProfilerView() {
   );
 }
 
-function DivisionView({ divisions, onDivisionClick }: { divisions: typeof divisions, onDivisionClick: (name: string) => void }) {
+function DivisionView({ divisions, onDivisionClick }: { divisions: DivisionVm[]; onDivisionClick: (name: string) => void }) {
+  if (divisions.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No division breakdown is available for this region.
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <h2 
@@ -379,13 +402,14 @@ function DivisionView({ divisions, onDivisionClick }: { divisions: typeof divisi
   );
 }
 
-function ClusterMapView() {
-  const clusters = [
-    { name: 'Cluster A - Urban Central', schools: 24, teachers: 892, coverage: 85, priority: 'low' },
-    { name: 'Cluster B - Suburban North', schools: 18, teachers: 645, coverage: 72, priority: 'moderate' },
-    { name: 'Cluster C - Rural East', schools: 32, teachers: 1204, coverage: 58, priority: 'high' },
-    { name: 'Cluster D - Island South', schools: 15, teachers: 423, coverage: 45, priority: 'critical' },
-  ];
+function ClusterMapView({ clusters }: { clusters: ClusterVm[] }) {
+  if (clusters.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No school clusters are available for this region.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -455,7 +479,15 @@ function ClusterMapView() {
   );
 }
 
-function TeacherCohortView({ cohorts }: { cohorts: typeof cohorts }) {
+function TeacherCohortView({ cohorts }: { cohorts: CohortVm[] }) {
+  if (cohorts.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No teacher cohort segmentation data is available.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -523,15 +555,14 @@ function TeacherCohortView({ cohorts }: { cohorts: typeof cohorts }) {
   );
 }
 
-function UnderservedScoreView() {
-  const scoreFactors = [
-    { factor: 'Geographic Remoteness', weight: 25, score: 8.2, impact: 'high' },
-    { factor: 'Infrastructure Quality', weight: 20, score: 6.5, impact: 'moderate' },
-    { factor: 'Teacher Availability', weight: 20, score: 7.8, impact: 'high' },
-    { factor: 'Resource Access', weight: 15, score: 5.9, impact: 'moderate' },
-    { factor: 'Training Opportunities', weight: 12, score: 6.2, impact: 'moderate' },
-    { factor: 'Technology Access', weight: 8, score: 4.5, impact: 'high' },
-  ];
+function UnderservedScoreView({ scoreFactors, underservedScore }: { scoreFactors: ScoreFactorVm[]; underservedScore: number }) {
+  if (scoreFactors.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No underserved score factors are available.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -565,7 +596,7 @@ function UnderservedScoreView() {
                 lineHeight: 1
               }}
             >
-              6.8
+              {underservedScore}
             </div>
             <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#888888', marginTop: '8px' }}>
               out of 10.0
@@ -624,7 +655,15 @@ function UnderservedScoreView() {
   );
 }
 
-function GapFactorView({ gapFactors }: { gapFactors: typeof gapFactors }) {
+function GapFactorView({ gapFactors }: { gapFactors: GapFactorVm[] }) {
+  if (gapFactors.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No gap-factor data is available.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -711,14 +750,14 @@ function GapFactorView({ gapFactors }: { gapFactors: typeof gapFactors }) {
   );
 }
 
-function DataConfidenceView() {
-  const dataQuality = [
-    { source: 'Teacher Registry', completeness: 95, accuracy: 92, timeliness: 88, confidence: 'high' },
-    { source: 'School Directory', completeness: 89, accuracy: 87, timeliness: 90, confidence: 'high' },
-    { source: 'Training Records', completeness: 78, accuracy: 82, timeliness: 75, confidence: 'moderate' },
-    { source: 'Geographic Data', completeness: 72, accuracy: 85, timeliness: 68, confidence: 'moderate' },
-    { source: 'Resource Inventory', completeness: 65, accuracy: 70, timeliness: 62, confidence: 'low' },
-  ];
+function DataConfidenceView({ dataQuality }: { dataQuality: DataConfidenceVm[] }) {
+  if (dataQuality.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
+        No data confidence metrics are available.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
