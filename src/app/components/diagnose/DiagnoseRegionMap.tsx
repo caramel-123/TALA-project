@@ -110,7 +110,7 @@ function resolveDivisionFromSubregion(subregionName: string, divisions: Division
 }
 
 function isLayerReady(map: maplibregl.Map, layerId: string): boolean {
-  return map.isStyleLoaded() && Boolean(map.getLayer(layerId));
+  return map.isStyleLoaded() === true && Boolean(map.getLayer(layerId));
 }
 
 function safeSetFilter(map: maplibregl.Map, layerId: string, filter: unknown[]) {
