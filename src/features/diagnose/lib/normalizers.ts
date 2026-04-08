@@ -4,6 +4,7 @@ import type {
   DataConfidenceVm,
   GapFactorVm,
   ScoreFactorVm,
+  ValidationStatus,
 } from '../../shared/types/view-models';
 
 type UnknownRecord = Record<string, unknown>;
@@ -38,6 +39,16 @@ function normalizeConfidence(value: unknown, fallback: ConfidenceLevel = 'modera
   const normalized = toStringOrEmpty(value).toLowerCase();
 
   if (normalized === 'high' || normalized === 'moderate' || normalized === 'low') {
+    return normalized;
+  }
+
+  return fallback;
+}
+
+function normalizeValidationStatus(value: unknown, fallback: ValidationStatus = 'pending'): ValidationStatus {
+  const normalized = toStringOrEmpty(value).toLowerCase();
+
+  if (normalized === 'validated' || normalized === 'pending' || normalized === 'flagged') {
     return normalized;
   }
 
@@ -167,6 +178,8 @@ export function normalizeDataConfidence(raw: unknown, fallback: DataConfidenceVm
         accuracy: 0,
         timeliness: 0,
         confidence: 'moderate',
+        validationStatus: 'pending',
+        conflictFlags: 0,
       };
     }
 
@@ -176,6 +189,9 @@ export function normalizeDataConfidence(raw: unknown, fallback: DataConfidenceVm
       accuracy: clamp(toNumberOrFallback(record.accuracy, 0), 0, 100),
       timeliness: clamp(toNumberOrFallback(record.timeliness, 0), 0, 100),
       confidence: normalizeConfidence(record.confidence),
+      validationStatus: normalizeValidationStatus(record.validationStatus),
+      conflictFlags: Math.max(0, Math.round(toNumberOrFallback(record.conflictFlags, 0))),
+      lastRefresh: toStringOrEmpty(record.lastRefresh) || undefined,
     };
   });
 

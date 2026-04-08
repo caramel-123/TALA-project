@@ -8,6 +8,11 @@ import {
   normalizeGapFactors,
   normalizeScoreFactors,
 } from '../lib/normalizers';
+import {
+  buildRegionSourceConfidence,
+  buildRegionalGapFactors,
+  getRegionConfidenceProfile,
+} from '../lib/syntheticProfiles';
 import type {
   CohortVm,
   DiagnoseNationalSummaryVm,
@@ -219,6 +224,13 @@ function buildNationalRegions(
     const starCoverage = Math.round(Number(context?.star_coverage_pct ?? seed?.starCoverage ?? 70));
     const teacherPopulation = Math.round(Number(context?.teacher_population ?? seed?.teacherPopulation ?? 12000));
     const topGap = seed?.topGap || 'Resource Access';
+    const confidence = confidenceFromDataQuality(dataQuality);
+    const profile = getRegionConfidenceProfile(
+      region.psgc_code,
+      dataQuality,
+      confidence,
+      formatDateLabel(context?.snapshot_date || null),
+    );
 
     return {
       regionCode: region.psgc_code,
@@ -227,9 +239,16 @@ function buildNationalRegions(
       starCoverage,
       underservedScore,
       dataQuality,
+      completeness: seed?.completeness ?? profile.completeness,
+      timeliness: seed?.timeliness ?? profile.timeliness,
+      validationStatus: seed?.validationStatus ?? profile.validationStatus,
+      conflictFlags: seed?.conflictFlags ?? profile.conflictFlags,
+      sourceCount: seed?.sourceCount ?? profile.sourceCount,
+      lastRefresh: seed?.lastRefresh ?? profile.lastRefresh,
+      reliabilityNote: seed?.reliabilityNote ?? profile.reliabilityNote,
       topGap,
       priority: priorityFromScore(underservedScore),
-      confidence: confidenceFromDataQuality(dataQuality),
+      confidence,
     };
   });
 }
@@ -260,6 +279,12 @@ async function resolveRegion(regionCodeOrId: string): Promise<RegionLookupRow | 
 function buildSeedRegionDetail(regionSummary: DiagnoseRegionSummaryVm): DiagnosePageVm {
   const regionShortName = regionSummary.regionName.replace(/^Region\s+[IVX0-9-]+\s+-\s+/i, '').trim() || regionSummary.regionName;
   const baseTeachers = Math.max(900, Math.round(regionSummary.teacherPopulation * 0.21));
+  const profile = getRegionConfidenceProfile(
+    regionSummary.regionCode,
+    regionSummary.dataQuality,
+    regionSummary.confidence,
+    regionSummary.lastRefresh,
+  );
 
   const divisions: DivisionVm[] = [
     {
@@ -303,44 +328,15 @@ function buildSeedRegionDetail(regionSummary: DiagnoseRegionSummaryVm): Diagnose
     { name: `${divisions[3].name} - Cluster 4`, divisionName: divisions[3].name, schools: 14, teachers: Math.round(baseTeachers * 0.64), coverage: Math.max(22, divisions[3].coverage - 5), priority: statusFromScore(divisions[3].score) },
   ];
 
-  const gapFactors = [
-    {
-      id: 'remote-access',
-      factor: 'Remote and Last-Mile Access',
-      contribution: Math.round(Math.min(92, regionSummary.underservedScore * 10 + 4)),
-      confidence: regionSummary.confidence,
-      definition: 'Geographic and transport barriers reducing regular teacher support delivery.',
-      source: 'Regional mobility and school access datasets',
-      recency: '35 days',
-    },
-    {
-      id: 'specialization',
-      factor: 'Teacher Specialization Gap',
-      contribution: Math.round(Math.min(90, regionSummary.underservedScore * 9.2)),
-      confidence: 'high',
-      definition: 'Mismatch between teacher specialization and required subject coverage.',
-      source: 'Teacher registry and curriculum coverage reports',
-      recency: '28 days',
-    },
-    {
-      id: 'infrastructure',
-      factor: 'Infrastructure and Learning Resources',
-      contribution: Math.round(Math.max(45, 100 - regionSummary.starCoverage + 20)),
-      confidence: 'moderate',
-      definition: 'Availability and readiness of infrastructure and learning resources.',
-      source: 'School infrastructure inventory',
-      recency: '52 days',
-    },
-    {
-      id: 'connectivity',
-      factor: 'Connectivity Reliability',
-      contribution: Math.round(Math.max(35, 95 - regionSummary.dataQuality)),
-      confidence: 'moderate',
-      definition: 'Reliability of digital access for blended support and reporting.',
-      source: 'Connectivity monitoring',
-      recency: '40 days',
-    },
-  ];
+  const gapFactors = buildRegionalGapFactors({
+    regionCode: regionSummary.regionCode,
+    regionName: regionSummary.regionName,
+    topGap: regionSummary.topGap,
+    underservedScore: regionSummary.underservedScore,
+    starCoverage: regionSummary.starCoverage,
+    dataQuality: regionSummary.dataQuality,
+    confidence: regionSummary.confidence,
+  });
 
   const scoreFactors = [
     { factor: 'Geographic Access Barriers', weight: 26, score: Number(Math.min(9.5, regionSummary.underservedScore + 0.7).toFixed(1)), impact: 'high' as const },
@@ -381,29 +377,12 @@ function buildSeedRegionDetail(regionSummary: DiagnoseRegionSummaryVm): Diagnose
     },
   ];
 
-  const dataQuality = [
-    {
-      source: 'Teacher Registry',
-      completeness: Math.min(98, regionSummary.dataQuality + 7),
-      accuracy: Math.min(97, regionSummary.dataQuality + 5),
-      timeliness: Math.max(55, regionSummary.dataQuality - 2),
-      confidence: 'high' as const,
-    },
-    {
-      source: 'School Directory',
-      completeness: Math.min(96, regionSummary.dataQuality + 4),
-      accuracy: Math.min(95, regionSummary.dataQuality + 2),
-      timeliness: Math.max(50, regionSummary.dataQuality - 5),
-      confidence: regionSummary.confidence,
-    },
-    {
-      source: 'Training and Attendance Records',
-      completeness: Math.max(40, regionSummary.dataQuality - 10),
-      accuracy: Math.max(45, regionSummary.dataQuality - 6),
-      timeliness: Math.max(40, regionSummary.dataQuality - 13),
-      confidence: regionSummary.confidence === 'high' ? 'moderate' : regionSummary.confidence,
-    },
-  ];
+  const dataQuality = buildRegionSourceConfidence(
+    regionSummary.regionCode,
+    regionSummary.confidence,
+    regionSummary.dataQuality,
+    profile.lastRefresh,
+  );
 
   return {
     ...devSeed.diagnose,
@@ -413,7 +392,7 @@ function buildSeedRegionDetail(regionSummary: DiagnoseRegionSummaryVm): Diagnose
       starCoverage: regionSummary.starCoverage,
       underservedScore: regionSummary.underservedScore,
       dataQuality: regionSummary.dataQuality,
-      lastUpdated: devSeed.diagnose.nationalSummary.lastUpdated,
+      lastUpdated: profile.lastRefresh,
     },
     divisions,
     clusters,

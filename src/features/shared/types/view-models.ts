@@ -1,4 +1,5 @@
 export type ConfidenceLevel = 'high' | 'moderate' | 'low';
+export type ValidationStatus = 'validated' | 'pending' | 'flagged';
 export type SourceStatus = 'pending' | 'validated' | 'flagged' | 'rejected';
 
 export type KpiCardVm = {
@@ -71,6 +72,13 @@ export type DiagnoseRegionSummaryVm = {
   starCoverage: number;
   underservedScore: number;
   dataQuality: number;
+  completeness?: number;
+  timeliness?: number;
+  validationStatus?: ValidationStatus;
+  conflictFlags?: number;
+  sourceCount?: number;
+  lastRefresh?: string;
+  reliabilityNote?: string;
   topGap: string;
   priority: 'critical' | 'high' | 'moderate' | 'low';
   confidence: ConfidenceLevel;
@@ -144,6 +152,9 @@ export type DataConfidenceVm = {
   accuracy: number;
   timeliness: number;
   confidence: ConfidenceLevel;
+  validationStatus?: ValidationStatus;
+  conflictFlags?: number;
+  lastRefresh?: string;
 };
 
 export type DiagnosePageVm = {
