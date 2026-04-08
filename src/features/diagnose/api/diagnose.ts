@@ -2,6 +2,12 @@ import { supabase } from '../../../lib/supabase/client';
 import { devSeed } from '../../shared/dev-seed';
 import { formatDateLabel } from '../../shared/mappers/formatters';
 import { queryWithFallback } from '../../shared/api/query-with-fallback';
+import {
+  normalizeClusters,
+  normalizeDataConfidence,
+  normalizeGapFactors,
+  normalizeScoreFactors,
+} from '../lib/normalizers';
 import type {
   CohortVm,
   DiagnosePageVm,
@@ -286,20 +292,12 @@ async function fetchDiagnosePageDataFromSupabase(regionCodeOrId = '040000000'): 
       dataQuality: Number(context?.data_quality_score || 0),
       lastUpdated: formatDateLabel(context?.snapshot_date || null),
     } as RegionalProfileVm,
-    gapFactors: Array.isArray(context?.gap_factors) && context?.gap_factors.length > 0
-      ? (context.gap_factors as DiagnosePageVm['gapFactors'])
-      : devSeed.diagnose.gapFactors,
+    gapFactors: normalizeGapFactors(context?.gap_factors, devSeed.diagnose.gapFactors),
     divisions: divisionData.length > 0 ? divisionData : devSeed.diagnose.divisions,
     cohorts: cohorts.length > 0 ? cohorts : devSeed.diagnose.cohorts,
-    clusters: Array.isArray(context?.cluster_map) && context?.cluster_map.length > 0
-      ? (context.cluster_map as DiagnosePageVm['clusters'])
-      : devSeed.diagnose.clusters,
-    scoreFactors: Array.isArray(context?.score_factors) && context?.score_factors.length > 0
-      ? (context.score_factors as DiagnosePageVm['scoreFactors'])
-      : devSeed.diagnose.scoreFactors,
-    dataQuality: Array.isArray(context?.data_confidence) && context?.data_confidence.length > 0
-      ? (context.data_confidence as DiagnosePageVm['dataQuality'])
-      : devSeed.diagnose.dataQuality,
+    clusters: normalizeClusters(context?.cluster_map, devSeed.diagnose.clusters),
+    scoreFactors: normalizeScoreFactors(context?.score_factors, devSeed.diagnose.scoreFactors),
+    dataQuality: normalizeDataConfidence(context?.data_confidence, devSeed.diagnose.dataQuality),
   };
 }
 
