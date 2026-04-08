@@ -9,6 +9,7 @@ Set client env vars in `.env.local`:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_DATA_MANAGER_FORCE_DEMO` (optional; set to `true` to intentionally simulate Integrate loads)
 
 Reference file:
 
@@ -71,15 +72,28 @@ If Supabase env vars are missing or a query fails in development:
 
 This keeps hackathon development unblocked while Supabase setup evolves.
 
-## Synthetic CSV Demo Generator
+## Synthetic CSV Demo Generator (TypeScript)
 
-Generate upload-ready CSVs with messy, realistic values:
+Generate a messy teacher-records CSV for Integrate demos:
 
 ```bash
-python scripts/generate_demo_csv.py --out demo_uploads
+npm run demo:teacher:generate -- --rows 220 --seed 42 --severity heavy --dirty 0.7 --out demo_uploads/teacher_records_messy.csv
 ```
 
-Script:
+Clean and standardize the generated teacher-records CSV:
 
-- [scripts/generate_demo_csv.py](scripts/generate_demo_csv.py)
+```bash
+npm run demo:teacher:clean -- --in demo_uploads/teacher_records_messy.csv --out demo_uploads/teacher_records_cleaned.csv --report demo_uploads/teacher_records_cleaning_report.json
+```
+
+Run both steps together:
+
+```bash
+npm run demo:teacher:pipeline -- --rows 220 --seed 42 --severity heavy --dirty 0.7
+```
+
+Scripts:
+
+- [scripts/teacher-records-demo.ts](scripts/teacher-records-demo.ts)
+- [scripts/generate_demo_csv.py](scripts/generate_demo_csv.py) (legacy multi-dataset generator)
   

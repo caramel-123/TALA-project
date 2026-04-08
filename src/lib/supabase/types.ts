@@ -154,14 +154,45 @@ export type Database = {
           updated_at: string;
         };
       };
+      teacher_records_staging: {
+        Row: {
+          id: string;
+          batch_id: string;
+          teacher_external_id: string;
+          teacher_name: string | null;
+          anonymized_teacher_hash: string | null;
+          specialization: string | null;
+          school_id: string | null;
+          region_id: string | null;
+          years_experience: number | null;
+          training_hours_last_12m: number | null;
+          submitted_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+      };
       validation_issues: {
         Row: {
           id: string;
           batch_id: string;
+          staging_record_id: string | null;
           issue_type: string;
           severity: string;
+          field_name: string | null;
           issue_message: string;
           is_resolved: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      validation_actions: {
+        Row: {
+          id: string;
+          issue_id: string;
+          action: string;
+          reviewer_id: string | null;
+          notes: string | null;
+          action_at: string;
           created_at: string;
           updated_at: string;
         };
