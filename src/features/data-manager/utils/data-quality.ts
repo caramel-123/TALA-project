@@ -9,18 +9,21 @@ import type {
   ValidationSummary,
 } from '../types/upload-workflow';
 
-const BLANK_LIKE_VALUES = new Set(['', 'n/a', 'na', 'none', 'null', 'nil', '-', '--']);
+const BLANK_LIKE_VALUES = new Set(['', 'n/a', 'na', 'none', 'null', 'nil', '-', '--', '""']);
 
 const KNOWN_COLUMN_KEYS = new Set([
   'teacher_external_id',
   'teacher_name',
   'anonymized_teacher_hash',
+  'region_code',
+  'canonical_region',
   'specialization',
   'years_experience',
   'training_hours_last_12m',
   'region',
   'division',
   'school_id_code',
+  'consent_flag',
   'submitted_at',
   'participation_date',
 ]);
@@ -34,7 +37,52 @@ const NUMERIC_RULES: Record<string, { min: number; max: number }> = {
 
 const DATE_FIELDS = new Set(['submitted_at', 'participation_date']);
 
-const TITLE_CASE_FIELDS = new Set(['teacher_name', 'specialization', 'region', 'division']);
+const TITLE_CASE_FIELDS = new Set(['teacher_name', 'specialization', 'division']);
+
+const BOOLEAN_FIELDS = new Set(['consent_flag']);
+
+const REGION_CODE_TO_CANONICAL: Record<string, string> = {
+  '130000000': 'NCR',
+  '040000000': 'Region IV-A',
+  '120000000': 'Region XII',
+  '190000000': 'BARMM',
+};
+
+const REGION_ALIAS_TO_CANONICAL: Record<string, string> = {
+  ncr: 'NCR',
+  national_capital_region: 'NCR',
+  metro_manila: 'NCR',
+  region_iv_a: 'Region IV-A',
+  region_4a: 'Region IV-A',
+  calabarzon: 'Region IV-A',
+  region_xii: 'Region XII',
+  region_12: 'Region XII',
+  soccsksargen: 'Region XII',
+  barmm: 'BARMM',
+  bangsamoro: 'BARMM',
+  bangsamoro_autonomous_region: 'BARMM',
+};
+
+const SPECIALIZATION_ALIAS_TO_CANONICAL: Record<string, string> = {
+  science: 'Science',
+  sci: 'Science',
+  gen_sci: 'Science',
+  general_science: 'Science',
+  sciense: 'Science',
+  mathematics: 'Mathematics',
+  math: 'Mathematics',
+  gen_math: 'Mathematics',
+  mathemathics: 'Mathematics',
+  english: 'English',
+  language_arts: 'Languages',
+  languages: 'Languages',
+  langauges: 'Languages',
+  general_education: 'General Education',
+  gen_ed: 'General Education',
+  ict: 'ICT',
+  information_technology: 'ICT',
+  information_tech: 'ICT',
+};
 
 const HEADER_ALIAS_TO_CANONICAL: Record<string, string> = {
   teacherid: 'teacher_external_id',
@@ -54,13 +102,21 @@ const HEADER_ALIAS_TO_CANONICAL: Record<string, string> = {
   training_hours_last_12m: 'training_hours_last_12m',
   training_hours: 'training_hours_last_12m',
   training_hours_last12m: 'training_hours_last_12m',
+  training_hours_last_12_months: 'training_hours_last_12m',
   submitted_at: 'submitted_at',
   submission_date: 'submitted_at',
   participation_date: 'participation_date',
+  region_code: 'region_code',
+  region_name: 'region',
+  canonical_region: 'canonical_region',
   region: 'region',
+  division_code: 'division',
   division: 'division',
   school_id: 'school_id_code',
   school_id_code: 'school_id_code',
+  consent_flag: 'consent_flag',
+  consent: 'consent_flag',
+  consented: 'consent_flag',
 };
 
 function normalizeToken(value: string) {
@@ -90,11 +146,133 @@ function normalizeBlankLike(value: string) {
 }
 
 function toTitleCase(value: string) {
+  const collapsed = value.replace(/\s+/g, ' ').trim();
+
+  if (!collapsed) {
+    return '';
+  }
+
+  if (/^[A-Z0-9-]+$/.test(collapsed)) {
+    return collapsed;
+  }
+
   return value
+    .replace(/\s+/g, ' ')
+    .trim()
     .split(' ')
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
+}
+
+function canonicalizeRegion(value: string) {
+  const normalized = normalizeToken(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (REGION_CODE_TO_CANONICAL[normalized]) {
+    return REGION_CODE_TO_CANONICAL[normalized];
+  }
+
+  return REGION_ALIAS_TO_CANONICAL[normalized] || null;
+}
+
+function canonicalizeSpecialization(value: string) {
+  const normalized = normalizeToken(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return SPECIALIZATION_ALIAS_TO_CANONICAL[normalized] || null;
+}
+
+function normalizeBooleanValue(value: string) {
+  const normalized = normalizeToken(value);
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (['1', 'true', 'yes', 'y'].includes(normalized)) {
+    return 'Yes';
+  }
+
+  if (['0', 'false', 'no', 'n'].includes(normalized)) {
+    return 'No';
+  }
+
+  return null;
+}
+
+function normalizeTeacherExternalId(value: string) {
+  const cleaned = value.trim().toUpperCase();
+  if (!cleaned) {
+    return '';
+  }
+
+  const normalized = cleaned.replace(/\s+/g, '');
+  const directDigits = normalized.match(/^\d{1,6}$/);
+  const prefixedDigits = normalized.match(/^(?:TCH|TEACHER)[-_]?([0-9]{1,6})$/);
+
+  if (directDigits) {
+    return `TCH-${directDigits[0].padStart(6, '0')}`;
+  }
+
+  if (prefixedDigits?.[1]) {
+    return `TCH-${prefixedDigits[1].padStart(6, '0')}`;
+  }
+
+  return cleaned;
+}
+
+function normalizeCodeWithPrefix(value: string, prefix: 'DIV' | 'SCH', width: number) {
+  const cleaned = value.trim().toUpperCase();
+  if (!cleaned) {
+    return '';
+  }
+
+  const digits = cleaned.replace(/\D+/g, '');
+  if (!digits || digits.length > width) {
+    return cleaned;
+  }
+
+  if (cleaned.startsWith(prefix) || /^\d+$/.test(cleaned)) {
+    return `${prefix}-${digits.padStart(width, '0')}`;
+  }
+
+  return cleaned;
+}
+
+function parseFlexibleNumber(value: string) {
+  const compact = value
+    .trim()
+    .toLowerCase()
+    .replace(/,/g, '')
+    .replace(/\s+/g, ' ');
+
+  if (!compact) {
+    return null;
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(compact)) {
+    const direct = Number(compact);
+    return Number.isFinite(direct) ? direct : null;
+  }
+
+  const withUnits = compact.match(/^(-?\d+(?:\.\d+)?)\s*(hours?|hrs?|years?|yrs?)$/);
+  if (withUnits?.[1]) {
+    const parsed = Number(withUnits[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  const stripped = compact.replace(/[$%]/g, '');
+  if (/^-?\d+(\.\d+)?$/.test(stripped)) {
+    const parsed = Number(stripped);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 function parseNumber(value: string) {
@@ -362,6 +540,49 @@ export function validateDataset(dataset: ParsedSpreadsheetDataset): DatasetValid
         );
       }
     });
+
+    BOOLEAN_FIELDS.forEach((columnKey) => {
+      if (!dataset.headers.includes(columnKey)) {
+        return;
+      }
+
+      const value = normalizeBlankLike(row[columnKey] || '');
+      if (!value) {
+        return;
+      }
+
+      if (normalizeBooleanValue(value) === null) {
+        pushIssue(
+          issues,
+          'invalid_number_format',
+          'moderate',
+          `Value "${value}" is not a recognized Yes/No value for ${columnKey}.`,
+          rowIndex,
+          columnKey,
+        );
+      }
+    });
+
+    if (dataset.headers.includes('region') && dataset.headers.includes('canonical_region')) {
+      const region = normalizeBlankLike(row.region || '');
+      const canonicalRegion = normalizeBlankLike(row.canonical_region || '');
+
+      if (region && canonicalRegion) {
+        const normalizedRegion = canonicalizeRegion(region);
+        const normalizedCanonical = canonicalizeRegion(canonicalRegion);
+
+        if (normalizedRegion && normalizedCanonical && normalizedRegion !== normalizedCanonical) {
+          pushIssue(
+            issues,
+            'out_of_range_value',
+            'moderate',
+            `region and canonical_region do not match: "${region}" vs "${canonicalRegion}".`,
+            rowIndex,
+            'canonical_region',
+          );
+        }
+      }
+    }
   });
 
   return {
@@ -387,7 +608,6 @@ export function autoCleanDataset(
   let removedEmptyRows = 0;
   let removedDuplicateRows = 0;
 
-  const seenIds = new Set<string>();
   const seenSignatures = new Set<string>();
 
   const cleanedRows = normalizedDataset.rows.reduce<SpreadsheetRow[]>((accumulator, row) => {
@@ -407,6 +627,62 @@ export function autoCleanDataset(
         blankLikeNormalized += 1;
       }
 
+      if (cleanedValue && cleanedValue.includes('  ')) {
+        const collapsed = cleanedValue.replace(/\s+/g, ' ').trim();
+        if (collapsed !== cleanedValue) {
+          cleanedValue = collapsed;
+          trimmedValues += 1;
+        }
+      }
+
+      if (cleanedValue && header === 'teacher_external_id') {
+        const normalizedId = normalizeTeacherExternalId(cleanedValue);
+        if (normalizedId !== cleanedValue) {
+          cleanedValue = normalizedId;
+          trimmedValues += 1;
+        }
+      }
+
+      if (cleanedValue && header === 'division') {
+        const normalizedDivision = normalizeCodeWithPrefix(cleanedValue, 'DIV', 3);
+        if (normalizedDivision !== cleanedValue) {
+          cleanedValue = normalizedDivision;
+          trimmedValues += 1;
+        }
+      }
+
+      if (cleanedValue && header === 'school_id_code') {
+        const normalizedSchool = normalizeCodeWithPrefix(cleanedValue, 'SCH', 5);
+        if (normalizedSchool !== cleanedValue) {
+          cleanedValue = normalizedSchool;
+          trimmedValues += 1;
+        }
+      }
+
+      if (cleanedValue && (header === 'region' || header === 'canonical_region')) {
+        const canonicalRegion = canonicalizeRegion(cleanedValue);
+        if (canonicalRegion && canonicalRegion !== cleanedValue) {
+          cleanedValue = canonicalRegion;
+          trimmedValues += 1;
+        }
+      }
+
+      if (cleanedValue && header === 'specialization') {
+        const canonicalSpecialization = canonicalizeSpecialization(cleanedValue);
+        if (canonicalSpecialization && canonicalSpecialization !== cleanedValue) {
+          cleanedValue = canonicalSpecialization;
+          trimmedValues += 1;
+        }
+      }
+
+      if (cleanedValue && BOOLEAN_FIELDS.has(header)) {
+        const normalizedBoolean = normalizeBooleanValue(cleanedValue);
+        if (normalizedBoolean && normalizedBoolean !== cleanedValue) {
+          cleanedValue = normalizedBoolean;
+          trimmedValues += 1;
+        }
+      }
+
       if (cleanedValue && TITLE_CASE_FIELDS.has(header)) {
         const titleCased = toTitleCase(cleanedValue);
         if (titleCased !== cleanedValue) {
@@ -423,7 +699,7 @@ export function autoCleanDataset(
       }
 
       if (cleanedValue && NUMERIC_RULES[header]) {
-        const parsed = parseNumber(cleanedValue);
+        const parsed = parseFlexibleNumber(cleanedValue);
         if (parsed !== null) {
           const normalizedNumber = Number.isInteger(parsed) ? String(parsed) : String(parsed);
           if (normalizedNumber !== cleanedValue) {
@@ -445,20 +721,9 @@ export function autoCleanDataset(
       .map((header) => normalizeBlankLike(nextRow[header] || '').toLowerCase())
       .join('|');
 
-    const normalizedId = normalizeBlankLike(nextRow.teacher_external_id || '').toLowerCase();
-
-    if (normalizedId && seenIds.has(normalizedId)) {
-      removedDuplicateRows += 1;
-      return accumulator;
-    }
-
     if (dedupeSignature && seenSignatures.has(dedupeSignature)) {
       removedDuplicateRows += 1;
       return accumulator;
-    }
-
-    if (normalizedId) {
-      seenIds.add(normalizedId);
     }
 
     seenSignatures.add(dedupeSignature);

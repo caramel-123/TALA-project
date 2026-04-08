@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "demo:teacher:generate": "tsx scripts/teacher-records-demo.ts generate",
+    "demo:teacher:clean": "tsx scripts/teacher-records-demo.ts clean",
+    "demo:teacher:pipeline": "tsx scripts/teacher-records-demo.ts pipeline"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -68,9 +71,11 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
+    "@types/node": "^25.5.2",
     "@vitejs/plugin-react": "4.7.0",
     "supabase": "^2.84.10",
     "tailwindcss": "4.1.12",
+    "tsx": "^4.21.0",
     "vite": "6.3.5"
   },
   "peerDependencies": {

@@ -398,104 +398,106 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
       </div>
 
       {rawDataset && (
-        <div className="mb-4 grid gap-2 rounded border border-[#D8D8D8] bg-[#EBF4FB] p-3 md:grid-cols-5">
-          <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-            <strong>File:</strong> {rawDataset.fileName}
-          </div>
-          <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-            <strong>Size:</strong> {formatBytes(rawDataset.fileSizeBytes)}
-          </div>
-          <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-            <strong>Rows:</strong> {rawDataset.rows.length.toLocaleString()}
-          </div>
-          <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-            <strong>Columns:</strong> {rawDataset.headers.length.toLocaleString()}
-          </div>
-          <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-            <strong>Status:</strong> {getValidationStatus(currentValidation)}
-          </div>
-        </div>
-      )}
+        <div className="mb-4 overflow-x-auto rounded border border-[#D8D8D8] bg-[#EBF4FB] p-2">
+          <div className="flex min-w-max items-center gap-2 whitespace-nowrap">
+            <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+              <strong>Rows:</strong> {rawDataset.rows.length.toLocaleString()}
+            </div>
+            <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+              <strong>Columns:</strong> {rawDataset.headers.length.toLocaleString()}
+            </div>
 
-      {rawDataset && (
-        <div className="mb-4 grid gap-3 rounded border border-[#D8D8D8] p-3 md:grid-cols-3">
-          <div>
-            <label style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>Source Name</label>
-            <Input
-              value={rawDataset.sourceName}
-              onChange={(event) => updateDatasetMetadata('sourceName', event.target.value)}
-              className="mt-1"
-              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px' }}
-            />
-          </div>
-          <div>
-            <label style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>Coverage</label>
-            <Input
-              value={rawDataset.coverageLabel}
-              onChange={(event) => updateDatasetMetadata('coverageLabel', event.target.value)}
-              className="mt-1"
-              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px' }}
-            />
-          </div>
-          <div>
-            <label style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>Source Type</label>
-            <select
-              className="mt-1 h-9 w-full rounded-md border border-[#D8D8D8] bg-white px-3"
-              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px' }}
-              value={rawDataset.sourceType}
-              onChange={(event) => updateDatasetMetadata('sourceType', event.target.value)}
-            >
-              <option value="teacher_records">Teacher Records</option>
-              <option value="training_data">Training Data</option>
-              <option value="infrastructure">Infrastructure</option>
-              <option value="geographic_data">Geographic Data</option>
-            </select>
+            <div className="h-5 w-px bg-[#A8C8E8]" aria-hidden="true" />
+
+            <div className="flex items-center gap-2">
+              <label style={{ fontFamily: 'Arial, sans-serif', fontSize: '8px', color: '#888888' }}>Source Name</label>
+              <Input
+                value={rawDataset.sourceName}
+                onChange={(event) => updateDatasetMetadata('sourceName', event.target.value)}
+                className="h-7 w-40 bg-white"
+                style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px' }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label style={{ fontFamily: 'Arial, sans-serif', fontSize: '8px', color: '#888888' }}>Coverage</label>
+              <Input
+                value={rawDataset.coverageLabel}
+                onChange={(event) => updateDatasetMetadata('coverageLabel', event.target.value)}
+                className="h-7 w-28 bg-white"
+                style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px' }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label style={{ fontFamily: 'Arial, sans-serif', fontSize: '8px', color: '#888888' }}>Source Type</label>
+              <select
+                className="h-7 w-36 rounded-md border border-[#D8D8D8] bg-white px-2"
+                style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px' }}
+                value={rawDataset.sourceType}
+                onChange={(event) => updateDatasetMetadata('sourceType', event.target.value)}
+              >
+                <option value="teacher_records">Teacher Records</option>
+                <option value="training_data">Training Data</option>
+                <option value="infrastructure">Infrastructure</option>
+                <option value="geographic_data">Geographic Data</option>
+              </select>
+            </div>
+
+            {rawValidation && (
+              <>
+                <div className="h-5 w-px bg-[#A8C8E8]" aria-hidden="true" />
+
+                <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                  <strong>Total Issues:</strong> {rawValidation.summary.total}
+                </span>
+                <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                  <strong>High:</strong> {rawValidation.summary.bySeverity.high}
+                </span>
+                <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                  <strong>Moderate:</strong> {rawValidation.summary.bySeverity.moderate}
+                </span>
+                <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                  <strong>Low:</strong> {rawValidation.summary.bySeverity.low}
+                </span>
+
+                {cleaningSummary && (
+                  <span
+                    className="max-w-[380px] truncate"
+                    title={cleaningSummary}
+                    style={{ fontFamily: 'Arial, sans-serif', fontSize: '8px', color: '#2E6DA4' }}
+                  >
+                    {cleaningSummary}
+                  </span>
+                )}
+
+                <Button
+                  type="button"
+                  onClick={() => setIssueSheetOpen(true)}
+                  className="h-7 bg-[#2E6DA4] px-2 hover:bg-[#1B3A5C]"
+                  style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', fontWeight: 'bold' }}
+                >
+                  Review All Issues
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAutoClean}
+                  disabled={stage === 'cleaning' || stage === 'loading'}
+                  variant="outline"
+                  className="h-7 border-[#2E6DA4] px-2 text-[#2E6DA4] hover:bg-[#EBF4FB]"
+                  style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', fontWeight: 'bold' }}
+                >
+                  {stage === 'cleaning' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  Auto Clean Data
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
 
       {rawDataset && rawValidation && (
         <div className="mb-4">
-          <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-[#D8D8D8] bg-[#EBF4FB] p-3">
-            <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-              <strong>Total:</strong> {rawValidation.summary.total}
-            </span>
-            <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-              <strong>High:</strong> {rawValidation.summary.bySeverity.high}
-            </span>
-            <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-              <strong>Moderate:</strong> {rawValidation.summary.bySeverity.moderate}
-            </span>
-            <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-              <strong>Low:</strong> {rawValidation.summary.bySeverity.low}
-            </span>
-            {cleaningSummary && (
-              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#2E6DA4' }}>{cleaningSummary}</span>
-            )}
-          </div>
-
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => setIssueSheetOpen(true)}
-              className="bg-[#2E6DA4] hover:bg-[#1B3A5C]"
-              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', fontWeight: 'bold' }}
-            >
-              Review All Issues
-            </Button>
-            <Button
-              type="button"
-              onClick={handleAutoClean}
-              disabled={stage === 'cleaning' || stage === 'loading'}
-              variant="outline"
-              className="border-[#2E6DA4] text-[#2E6DA4] hover:bg-[#EBF4FB]"
-              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', fontWeight: 'bold' }}
-            >
-              {stage === 'cleaning' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Auto Clean Data
-            </Button>
-          </div>
-
           <SpreadsheetGrid
             title="Raw Data Preview"
             headers={rawDataset.headers}
