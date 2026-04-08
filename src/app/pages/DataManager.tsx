@@ -1,12 +1,14 @@
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { StatusBadge } from '../components/dashboard/StatusBadge';
-import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '../components/ui/sonner';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getDataManagerPageData } from '../../features/data-manager/api/data-manager';
 import { devSeed } from '../../features/shared/dev-seed';
 import type { DataManagerPageVm } from '../../features/shared/types/view-models';
+import { UploadWorkflowPanel } from '../../features/data-manager/components/UploadWorkflowPanel';
+import type { DatasetLoadResult, UploadSourceType } from '../../features/data-manager/types/upload-workflow';
 
 export function DataManager() {
   const [pageData, setPageData] = useState<DataManagerPageVm>(devSeed.dataManager);
@@ -18,59 +20,98 @@ export function DataManager() {
   const hasValidationIssues = pageData.validationIssues.length > 0;
   const hasRegionalQuality = pageData.dataQualityByRegion.length > 0;
 
+  const loadDataManagerData = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const result = await getDataManagerPageData();
+
+      setPageData(result.data);
+      setUsingFallback(result.usingFallback);
+      setLoadError(result.error);
+    } catch (error) {
+      setPageData(devSeed.dataManager);
+      setUsingFallback(true);
+      setLoadError(error instanceof Error ? error.message : 'Unable to load Data Manager data.');
+      toast.error('Unable to load Supabase data. Showing demo values.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
-    async function loadDataManagerData() {
-      setIsLoading(true);
-
-      try {
-        const result = await getDataManagerPageData();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setPageData(result.data);
-        setUsingFallback(result.usingFallback);
-        setLoadError(result.error);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setPageData(devSeed.dataManager);
-        setUsingFallback(true);
-        setLoadError(error instanceof Error ? error.message : 'Unable to load Data Manager data.');
-        toast.error('Unable to load Supabase data. Showing demo values.');
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+    loadDataManagerData().catch(() => {
+      if (!isMounted) {
+        return;
       }
-    }
-
-    loadDataManagerData();
+      // Fail-safe fallback already handled inside loadDataManagerData.
+    });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadDataManagerData]);
 
-  const handleUpload = () => {
-    toast.info('File upload dialog would open here');
+  const toSourceTypeLabel = (sourceType: UploadSourceType) => {
+    if (sourceType === 'teacher_records') {
+      return 'Teacher Records';
+    }
+    if (sourceType === 'training_data') {
+      return 'Training Data';
+    }
+    if (sourceType === 'infrastructure') {
+      return 'Infrastructure';
+    }
+    return 'Geographic Data';
   };
 
-  const handleReviewIssues = () => {
-    toast.info('Opening validation issue details panel');
-  };
+  const handleWorkflowLoadComplete = useCallback(async (result: DatasetLoadResult) => {
+    setLoadError(result.warning);
 
-  const handleAutoCorrect = () => {
-    toast.success('Auto-correcting 89 format mismatches...');
-    setTimeout(() => {
-      toast.success('Auto-correction complete!');
-    }, 1500);
-  };
+    if (result.mode === 'live') {
+      await loadDataManagerData();
+      return;
+    }
+
+    setUsingFallback(true);
+
+    setPageData((previous) => {
+      const nextSource = {
+        name: result.dataSourceName,
+        type: toSourceTypeLabel(result.dataSourceType),
+        region: 'National',
+        records: result.rowCount,
+        lastUpdated: new Date().toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        completeness: result.unresolvedIssues > 0 ? 82 : 100,
+        status: result.unresolvedIssues > 0 ? 'flagged' : 'validated',
+      } as const;
+
+      const existingSources = previous.dataSources.filter((source) => source.name !== nextSource.name);
+
+      const validationIssues = result.unresolvedIssues > 0
+        ? [
+            {
+              type: 'Uploaded Batch Review',
+              count: result.unresolvedIssues,
+              severity: result.unresolvedIssues > 10 ? 'high' : 'moderate',
+            },
+            ...previous.validationIssues,
+          ]
+        : previous.validationIssues;
+
+      return {
+        ...previous,
+        dataSources: [nextSource, ...existingSources],
+        validationIssues,
+      };
+    });
+  }, [loadDataManagerData]);
 
   const handleSourceClick = (sourceName: string) => {
     toast.info(`Opening detailed view for: ${sourceName}`);
@@ -108,41 +149,7 @@ export function DataManager() {
           )}
         </div>
 
-        {/* Upload Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 
-            className="mb-4" 
-            style={{ 
-              fontFamily: 'Arial, sans-serif', 
-              fontSize: '18px', 
-              fontWeight: 'bold', 
-              color: '#1B3A5C' 
-            }}
-          >
-            Upload New Data
-          </h2>
-          <div 
-            onClick={handleUpload}
-            className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-[#EBF4FB] transition-colors"
-            style={{ borderColor: '#A8C8E8' }}
-          >
-            <Upload className="w-12 h-12 mx-auto mb-3" style={{ color: '#2E6DA4' }} />
-            <p 
-              className="mb-2" 
-              style={{ 
-                fontFamily: 'Arial, sans-serif', 
-                fontSize: '11px', 
-                fontWeight: 'bold',
-                color: '#1A1A1A' 
-              }}
-            >
-              Click to upload or drag and drop
-            </p>
-            <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>
-              Supported formats: CSV, XLSX, JSON (Max 50MB)
-            </p>
-          </div>
-        </div>
+        <UploadWorkflowPanel onLoadComplete={handleWorkflowLoadComplete} />
 
         {/* Data Source Registry */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -280,27 +287,8 @@ export function DataManager() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex gap-2">
-              <button 
-                onClick={handleReviewIssues}
-                className="flex-1 px-4 py-2 rounded bg-[#2E6DA4] text-white hover:bg-[#1B3A5C] transition-colors cursor-pointer"
-                style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', fontWeight: 'bold' }}
-              >
-                Review All Issues
-              </button>
-              <button 
-                onClick={handleAutoCorrect}
-                className="px-4 py-2 rounded bg-white border hover:bg-[#EBF4FB] transition-colors cursor-pointer"
-                style={{ 
-                  fontFamily: 'Arial, sans-serif', 
-                  fontSize: '10px', 
-                  fontWeight: 'bold',
-                  borderColor: '#2E6DA4',
-                  color: '#2E6DA4'
-                }}
-              >
-                Auto-Correct
-              </button>
+            <div className="mt-4" style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>
+              Use the upload workflow above to review and clean the current file issues.
             </div>
           </div>
 
