@@ -5,7 +5,7 @@ const pathNames: Record<string, string> = {
   '': 'Overview',
   'diagnose': 'Diagnose',
   'advise': 'Advise',
-  'data-manager': 'Data Manager',
+  'data-manager': 'Integrate',
   'reports': 'Reports',
   'settings': 'Settings',
 };

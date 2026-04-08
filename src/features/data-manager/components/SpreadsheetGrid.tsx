@@ -68,7 +68,7 @@ export function SpreadsheetGrid({
   }, [focusTarget, headers, previewRows]);
 
   return (
-    <div className="rounded-lg border border-[#D8D8D8] bg-white">
+    <div className="w-full min-w-0 rounded-lg border border-[#D8D8D8] bg-white">
       <div className="flex items-center justify-between border-b border-[#D8D8D8] bg-[#EBF4FB] px-4 py-2">
         <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>
           {title}
@@ -78,7 +78,7 @@ export function SpreadsheetGrid({
         </div>
       </div>
 
-      <div className="max-h-[420px] overflow-auto">
+      <div className="max-h-[420px] w-full overflow-auto">
         <table className="min-w-full border-separate border-spacing-0">
           <thead>
             <tr>

@@ -59,7 +59,7 @@ export const settingsRoles = [
   },
   {
     name: 'Data Steward',
-    permissions: ['Data Manager', 'Quality reports', 'Validation', 'Upload data'],
+    permissions: ['Integrate', 'Quality reports', 'Validation', 'Upload data'],
     users: 5,
   },
   {
@@ -71,7 +71,7 @@ export const settingsRoles = [
 
 export const settingsAuditLog = [
   { user: 'Maria Santos', action: 'Approved intervention plan', module: 'Advise', timestamp: 'April 5, 2026 10:30 AM' },
-  { user: 'Pedro Reyes', action: 'Uploaded teacher dataset', module: 'Data Manager', timestamp: 'April 5, 2026 09:15 AM' },
+  { user: 'Pedro Reyes', action: 'Uploaded teacher dataset', module: 'Integrate', timestamp: 'April 5, 2026 09:15 AM' },
   { user: 'Juan dela Cruz', action: 'Generated regional report', module: 'Reports', timestamp: 'April 4, 2026 04:20 PM' },
   { user: 'Maria Santos', action: 'Modified user permissions', module: 'Settings', timestamp: 'April 4, 2026 02:00 PM' },
 ];
