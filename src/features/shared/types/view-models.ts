@@ -76,6 +76,9 @@ export type GapFactorVm = {
   factor: string;
   contribution: number;
   confidence: ConfidenceLevel;
+  definition?: string;
+  source?: string;
+  recency?: string;
 };
 
 export type DivisionVm = {
