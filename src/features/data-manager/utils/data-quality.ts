@@ -16,12 +16,14 @@ const KNOWN_COLUMN_KEYS = new Set([
   'teacher_name',
   'anonymized_teacher_hash',
   'region_code',
+  'region_name',
   'canonical_region',
   'specialization',
   'years_experience',
   'training_hours_last_12m',
   'region',
   'division',
+  'division_code',
   'school_id_code',
   'consent_flag',
   'submitted_at',
@@ -37,7 +39,7 @@ const NUMERIC_RULES: Record<string, { min: number; max: number }> = {
 
 const DATE_FIELDS = new Set(['submitted_at', 'participation_date']);
 
-const TITLE_CASE_FIELDS = new Set(['teacher_name', 'specialization', 'division']);
+const TITLE_CASE_FIELDS = new Set(['teacher_name', 'specialization']);
 
 const BOOLEAN_FIELDS = new Set(['consent_flag']);
 
@@ -61,6 +63,7 @@ const REGION_ALIAS_TO_CANONICAL: Record<string, string> = {
   barmm: 'BARMM',
   bangsamoro: 'BARMM',
   bangsamoro_autonomous_region: 'BARMM',
+  bangsamoro_autonomous_region_in_muslim_mindanao: 'BARMM',
 };
 
 const SPECIALIZATION_ALIAS_TO_CANONICAL: Record<string, string> = {
@@ -133,11 +136,11 @@ const HEADER_ALIAS_TO_CANONICAL: Record<string, string> = {
   submission_date: 'submitted_at',
   participation_date: 'participation_date',
   region_code: 'region_code',
-  region_name: 'region',
+  region_name: 'region_name',
   canonical_region: 'canonical_region',
-  region: 'region',
-  division_code: 'division',
-  division: 'division',
+  region: 'region_name',
+  division_code: 'division_code',
+  division: 'division_code',
   school_id: 'school_id_code',
   school_id_code: 'school_id_code',
   consent_flag: 'consent_flag',
@@ -182,13 +185,27 @@ function toTitleCase(value: string) {
     return collapsed;
   }
 
-  return value
-    .replace(/\s+/g, ' ')
-    .trim()
+  return collapsed
     .split(' ')
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
+}
+
+function normalizeTeacherName(value: string) {
+  const collapsed = value.replace(/\s+/g, ' ').trim();
+
+  if (!collapsed) {
+    return '';
+  }
+
+  const withoutTrailingPunctuation = collapsed.replace(/[.,;:!?]+$/g, '').trim();
+
+  if (!withoutTrailingPunctuation) {
+    return '';
+  }
+
+  return toTitleCase(withoutTrailingPunctuation);
 }
 
 function canonicalizeRegion(value: string) {
@@ -319,6 +336,93 @@ function parseNumber(value: string) {
   return parsed;
 }
 
+function formatNormalizedNumber(value: number) {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+
+  return String(Number(value.toFixed(2)));
+}
+
+const MIN_ACCEPTABLE_YEAR = 2000;
+const MAX_ACCEPTABLE_YEAR = 2100;
+
+function toIsoDateFromParts(year: number, month: number, day: number) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  if (year < MIN_ACCEPTABLE_YEAR || year > MAX_ACCEPTABLE_YEAR) {
+    return null;
+  }
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year
+    || parsed.getUTCMonth() + 1 !== month
+    || parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function excelSerialToIsoDate(value: string) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  const serial = Math.trunc(parsed);
+
+  if (serial < 1 || serial > 100000) {
+    return null;
+  }
+
+  const excelEpochUtcMs = Date.UTC(1899, 11, 30);
+  const parsedDate = new Date(excelEpochUtcMs + serial * 86400000);
+
+  return toIsoDateFromParts(
+    parsedDate.getUTCFullYear(),
+    parsedDate.getUTCMonth() + 1,
+    parsedDate.getUTCDate(),
+  );
+}
+
+const MONTH_NAME_TO_INDEX: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+};
+
 function normalizeDateString(value: string) {
   const trimmed = value.trim();
 
@@ -326,12 +430,43 @@ function normalizeDateString(value: string) {
     return null;
   }
 
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return toIsoDateFromParts(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+  }
+
+  const slashIsoMatch = trimmed.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (slashIsoMatch) {
+    return toIsoDateFromParts(Number(slashIsoMatch[1]), Number(slashIsoMatch[2]), Number(slashIsoMatch[3]));
+  }
+
+  const slashUsMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashUsMatch) {
+    return toIsoDateFromParts(Number(slashUsMatch[3]), Number(slashUsMatch[1]), Number(slashUsMatch[2]));
+  }
+
+  const monthNameMatch = trimmed.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+  if (monthNameMatch) {
+    const month = MONTH_NAME_TO_INDEX[monthNameMatch[1].toLowerCase()];
+
+    if (month) {
+      return toIsoDateFromParts(Number(monthNameMatch[3]), month, Number(monthNameMatch[2]));
+    }
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    const fromSerial = excelSerialToIsoDate(trimmed);
+    if (fromSerial) {
+      return fromSerial;
+    }
+  }
+
   const parsed = new Date(trimmed);
   if (Number.isNaN(parsed.getTime())) {
     return null;
   }
 
-  return parsed.toISOString().slice(0, 10);
+  return toIsoDateFromParts(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
 }
 
 function createSummary(issues: UploadValidationIssue[]): ValidationSummary {
@@ -589,8 +724,14 @@ export function validateDataset(dataset: ParsedSpreadsheetDataset): DatasetValid
       }
     });
 
-    if (dataset.headers.includes('region') && dataset.headers.includes('canonical_region')) {
-      const region = normalizeBlankLike(row.region || '');
+    const regionColumnKey = dataset.headers.includes('region_name')
+      ? 'region_name'
+      : dataset.headers.includes('region')
+        ? 'region'
+        : null;
+
+    if (regionColumnKey && dataset.headers.includes('canonical_region')) {
+      const region = normalizeBlankLike(row[regionColumnKey] || '');
       const canonicalRegion = normalizeBlankLike(row.canonical_region || '');
 
       if (region && canonicalRegion) {
@@ -646,17 +787,26 @@ export function autoCleanDataset(
 } {
   const { dataset: normalizedDataset, renamedHeaders } = normalizeDatasetHeaders(dataset);
 
+  let rowsChanged = 0;
   let trimmedValues = 0;
   let normalizedDates = 0;
   let coercedNumbers = 0;
   let blankLikeNormalized = 0;
+  let standardizedRegions = 0;
+  let standardizedSpecializations = 0;
+  let standardizedBooleans = 0;
+  let standardizedCodes = 0;
+  let standardizedNames = 0;
+  let outOfRangeNumbersCleared = 0;
   let removedEmptyRows = 0;
   let removedDuplicateRows = 0;
 
+  const seenTeacherIds = new Set<string>();
   const seenSignatures = new Set<string>();
 
   const cleanedRows = normalizedDataset.rows.reduce<SpreadsheetRow[]>((accumulator, row) => {
     const nextRow: SpreadsheetRow = {};
+    let rowChanged = false;
 
     normalizedDataset.headers.forEach((header) => {
       const originalValue = row[header] || '';
@@ -664,12 +814,14 @@ export function autoCleanDataset(
 
       if (trimmed !== originalValue) {
         trimmedValues += 1;
+        rowChanged = true;
       }
 
       let cleanedValue = normalizeBlankLike(trimmed);
 
       if (cleanedValue !== trimmed && cleanedValue === '') {
         blankLikeNormalized += 1;
+        rowChanged = true;
       }
 
       if (cleanedValue && cleanedValue.includes('  ')) {
@@ -677,6 +829,17 @@ export function autoCleanDataset(
         if (collapsed !== cleanedValue) {
           cleanedValue = collapsed;
           trimmedValues += 1;
+          rowChanged = true;
+        }
+      }
+
+      if (cleanedValue && header === 'teacher_name') {
+        const normalizedName = normalizeTeacherName(cleanedValue);
+        if (normalizedName !== cleanedValue) {
+          cleanedValue = normalizedName;
+          standardizedNames += 1;
+          trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
@@ -684,15 +847,19 @@ export function autoCleanDataset(
         const normalizedId = normalizeTeacherExternalId(cleanedValue);
         if (normalizedId !== cleanedValue) {
           cleanedValue = normalizedId;
+          standardizedCodes += 1;
           trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
-      if (cleanedValue && header === 'division') {
+      if (cleanedValue && header === 'division_code') {
         const normalizedDivision = normalizeCodeWithPrefix(cleanedValue, 'DIV', 3);
         if (normalizedDivision !== cleanedValue) {
           cleanedValue = normalizedDivision;
+          standardizedCodes += 1;
           trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
@@ -700,15 +867,19 @@ export function autoCleanDataset(
         const normalizedSchool = normalizeCodeWithPrefix(cleanedValue, 'SCH', 5);
         if (normalizedSchool !== cleanedValue) {
           cleanedValue = normalizedSchool;
+          standardizedCodes += 1;
           trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
-      if (cleanedValue && (header === 'region' || header === 'canonical_region')) {
+      if (cleanedValue && (header === 'region_name' || header === 'region' || header === 'canonical_region')) {
         const canonicalRegion = canonicalizeRegion(cleanedValue);
         if (canonicalRegion && canonicalRegion !== cleanedValue) {
           cleanedValue = canonicalRegion;
+          standardizedRegions += 1;
           trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
@@ -716,7 +887,16 @@ export function autoCleanDataset(
         const canonicalSpecialization = canonicalizeSpecialization(cleanedValue);
         if (canonicalSpecialization && canonicalSpecialization !== cleanedValue) {
           cleanedValue = canonicalSpecialization;
+          standardizedSpecializations += 1;
           trimmedValues += 1;
+          rowChanged = true;
+        } else {
+          const titleCased = toTitleCase(cleanedValue);
+          if (titleCased !== cleanedValue) {
+            cleanedValue = titleCased;
+            trimmedValues += 1;
+            rowChanged = true;
+          }
         }
       }
 
@@ -724,14 +904,18 @@ export function autoCleanDataset(
         const normalizedBoolean = normalizeBooleanValue(cleanedValue);
         if (normalizedBoolean && normalizedBoolean !== cleanedValue) {
           cleanedValue = normalizedBoolean;
+          standardizedBooleans += 1;
           trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
-      if (cleanedValue && TITLE_CASE_FIELDS.has(header)) {
+      if (cleanedValue && TITLE_CASE_FIELDS.has(header) && header !== 'teacher_name' && header !== 'specialization') {
         const titleCased = toTitleCase(cleanedValue);
         if (titleCased !== cleanedValue) {
           cleanedValue = titleCased;
+          trimmedValues += 1;
+          rowChanged = true;
         }
       }
 
@@ -740,22 +924,55 @@ export function autoCleanDataset(
         if (normalizedDate && normalizedDate !== cleanedValue) {
           cleanedValue = normalizedDate;
           normalizedDates += 1;
+          rowChanged = true;
         }
       }
 
       if (cleanedValue && NUMERIC_RULES[header]) {
         const parsed = parseFlexibleNumber(cleanedValue);
         if (parsed !== null) {
-          const normalizedNumber = Number.isInteger(parsed) ? String(parsed) : String(parsed);
-          if (normalizedNumber !== cleanedValue) {
-            cleanedValue = normalizedNumber;
-            coercedNumbers += 1;
+          const range = NUMERIC_RULES[header];
+
+          if (parsed < range.min || parsed > range.max) {
+            cleanedValue = '';
+            outOfRangeNumbersCleared += 1;
+            blankLikeNormalized += 1;
+            rowChanged = true;
+          } else {
+            const normalizedNumber = formatNormalizedNumber(parsed);
+            if (normalizedNumber !== cleanedValue) {
+              cleanedValue = normalizedNumber;
+              coercedNumbers += 1;
+              rowChanged = true;
+            }
           }
         }
       }
 
       nextRow[header] = cleanedValue;
     });
+
+    const canonicalFromRegionCode = canonicalizeRegion(nextRow.region_code || '');
+    if (canonicalFromRegionCode) {
+      const regionColumns: Array<'region_name' | 'region' | 'canonical_region'> = ['region_name', 'region', 'canonical_region'];
+
+      regionColumns.forEach((columnKey) => {
+        if (!normalizedDataset.headers.includes(columnKey)) {
+          return;
+        }
+
+        const existing = normalizeBlankLike(nextRow[columnKey] || '');
+        if (existing !== canonicalFromRegionCode) {
+          nextRow[columnKey] = canonicalFromRegionCode;
+          standardizedRegions += 1;
+          rowChanged = true;
+        }
+      });
+    }
+
+    if (rowChanged) {
+      rowsChanged += 1;
+    }
 
     if (hasOnlyEmptyValues(nextRow, normalizedDataset.headers)) {
       removedEmptyRows += 1;
@@ -765,6 +982,17 @@ export function autoCleanDataset(
     const dedupeSignature = normalizedDataset.headers
       .map((header) => normalizeBlankLike(nextRow[header] || '').toLowerCase())
       .join('|');
+
+    const normalizedTeacherId = normalizeBlankLike(nextRow.teacher_external_id || '').toLowerCase();
+
+    if (normalizedTeacherId) {
+      if (seenTeacherIds.has(normalizedTeacherId)) {
+        removedDuplicateRows += 1;
+        return accumulator;
+      }
+
+      seenTeacherIds.add(normalizedTeacherId);
+    }
 
     if (dedupeSignature && seenSignatures.has(dedupeSignature)) {
       removedDuplicateRows += 1;
@@ -782,15 +1010,27 @@ export function autoCleanDataset(
   };
 
   const validation = validateDataset(cleanedDataset);
+  const duplicatesFlagged = validation.issues.filter(
+    (issue) => issue.type === 'duplicate_id' || issue.type === 'duplicate_record',
+  ).length;
 
   return {
     cleanedDataset,
     validation,
     summary: {
+      rowsProcessed: normalizedDataset.rows.length,
+      rowsChanged,
       trimmedValues,
       normalizedDates,
       coercedNumbers,
       blankLikeNormalized,
+      standardizedRegions,
+      standardizedSpecializations,
+      standardizedBooleans,
+      standardizedCodes,
+      standardizedNames,
+      outOfRangeNumbersCleared,
+      duplicatesFlagged,
       removedEmptyRows,
       removedDuplicateRows,
       renamedHeaders,

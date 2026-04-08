@@ -715,11 +715,21 @@ function runClean(options: Record<string, string>): void {
     inputPath: resolve(inputPath),
     outputPath: resolve(outputPath),
     totalRowsProcessed: rawDataset.rows.length,
+    rowsChanged: cleaning.summary.rowsChanged,
     rowsAfterCleaning: cleaning.cleanedDataset.rows.length,
     rowsRemoved: rawDataset.rows.length - cleaning.cleanedDataset.rows.length,
-    rowsAutoCleaned: cleaning.summary.trimmedValues + cleaning.summary.blankLikeNormalized + cleaning.summary.coercedNumbers + cleaning.summary.normalizedDates,
+    rowsAutoCleaned:
+      cleaning.summary.standardizedNames
+      + cleaning.summary.standardizedRegions
+      + cleaning.summary.standardizedSpecializations
+      + cleaning.summary.standardizedBooleans
+      + cleaning.summary.standardizedCodes
+      + cleaning.summary.coercedNumbers
+      + cleaning.summary.normalizedDates
+      + cleaning.summary.outOfRangeNumbersCleared,
     rowsStillFlagged: post.validation.summary.open,
     duplicatesFound: baseline.duplicatesFound,
+    duplicatesFlaggedAfterCleaning: cleaning.summary.duplicatesFlagged,
     requiredFieldGaps: post.requiredFieldGaps,
     invalidValuesRemaining: post.invalidValuesRemaining,
     baselineIssueSummary: baseline.validation.summary,

@@ -54,10 +54,19 @@ export type DatasetValidationResult = {
 };
 
 export type CleaningSummary = {
+  rowsProcessed: number;
+  rowsChanged: number;
   trimmedValues: number;
   normalizedDates: number;
   coercedNumbers: number;
   blankLikeNormalized: number;
+  standardizedRegions: number;
+  standardizedSpecializations: number;
+  standardizedBooleans: number;
+  standardizedCodes: number;
+  standardizedNames: number;
+  outOfRangeNumbersCleared: number;
+  duplicatesFlagged: number;
   removedEmptyRows: number;
   removedDuplicateRows: number;
   renamedHeaders: number;

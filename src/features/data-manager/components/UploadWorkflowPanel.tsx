@@ -233,6 +233,7 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
       [
         `${summary.issuesResolved} issues auto-resolved`,
         `${summary.issuesRemaining} issues still need review`,
+        `${summary.rowsChanged} rows standardized`,
         `${summary.removedEmptyRows} empty rows removed`,
         `${summary.removedDuplicateRows} duplicates removed`,
       ].join(' • '),
@@ -316,17 +317,24 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
 
     setStage('loading');
 
-    const loadResult = await loadDatasetToRegistry(cleanedDataset, cleanedValidation);
+    try {
+      const loadResult = await loadDatasetToRegistry(cleanedDataset, cleanedValidation);
 
-    if (loadResult.mode === 'live') {
-      toast.success(`Loaded ${loadResult.rowCount.toLocaleString()} rows into registry.`);
-    } else {
-      toast.info(loadResult.warning || 'Load simulated in demo mode.');
+      if (loadResult.mode === 'live') {
+        toast.success(`Loaded ${loadResult.rowCount.toLocaleString()} rows into registry.`);
+      } else {
+        toast.info(loadResult.warning || 'Load simulated in demo mode.');
+      }
+
+      onLoadComplete(loadResult);
+      setLastLoadResult(loadResult);
+      setStage('loaded');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Supabase load failed.';
+      toast.error(message);
+      setLastLoadResult(null);
+      setStage('ready');
     }
-
-    onLoadComplete(loadResult);
-    setLastLoadResult(loadResult);
-    setStage('loaded');
   };
 
   return (
@@ -526,13 +534,43 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
           {cleaningMetrics && (
             <div className="flex flex-wrap items-center gap-3 rounded border border-[#D8D8D8] bg-white px-3 py-2">
               <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
-                <strong>Rows Processed:</strong> {rawDataset?.rows.length.toLocaleString() || 0}
+                <strong>Rows Processed:</strong> {cleaningMetrics.rowsProcessed.toLocaleString()}
               </span>
               <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
-                <strong>Values Standardized:</strong> {(cleaningMetrics.trimmedValues + cleaningMetrics.coercedNumbers + cleaningMetrics.normalizedDates).toLocaleString()}
+                <strong>Rows Changed:</strong> {cleaningMetrics.rowsChanged.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Raw Open Issues:</strong> {rawValidation?.summary.open.toLocaleString() || 0}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Cleaned Open Issues:</strong> {cleanedValidation.summary.open.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#2E6DA4' }}>
+                <strong>Auto-Fixed:</strong> {cleaningMetrics.issuesResolved.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Regions Standardized:</strong> {cleaningMetrics.standardizedRegions.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Specializations Standardized:</strong> {cleaningMetrics.standardizedSpecializations.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Numeric Values Normalized:</strong> {(cleaningMetrics.coercedNumbers + cleaningMetrics.outOfRangeNumbersCleared).toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Boolean Values Normalized:</strong> {cleaningMetrics.standardizedBooleans.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Codes Normalized:</strong> {cleaningMetrics.standardizedCodes.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Dates Normalized:</strong> {cleaningMetrics.normalizedDates.toLocaleString()}
               </span>
               <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
                 <strong>Duplicates Removed:</strong> {cleaningMetrics.removedDuplicateRows.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Duplicates Flagged:</strong> {cleaningMetrics.duplicatesFlagged.toLocaleString()}
               </span>
               <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
                 <strong>Remaining Issues:</strong> {cleanedValidation.summary.open.toLocaleString()}

@@ -9,6 +9,7 @@ Set client env vars in `.env.local`:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_DATA_MANAGER_FORCE_DEMO` (optional; set to `true` to intentionally simulate Integrate loads)
 
 Reference file:
 
