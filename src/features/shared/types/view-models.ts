@@ -1,4 +1,5 @@
 export type ConfidenceLevel = 'high' | 'moderate' | 'low';
+export type ValidationStatus = 'validated' | 'pending' | 'flagged';
 export type SourceStatus = 'pending' | 'validated' | 'flagged' | 'rejected';
 
 export type KpiCardVm = {
@@ -62,6 +63,37 @@ export type DiagnoseSidebarItemVm = {
   active: boolean;
 };
 
+export type DiagnoseScopeLevel = 'national' | 'region' | 'division' | 'cluster';
+
+export type DiagnoseRegionSummaryVm = {
+  regionCode: string;
+  regionName: string;
+  teacherPopulation: number;
+  starCoverage: number;
+  underservedScore: number;
+  dataQuality: number;
+  completeness?: number;
+  timeliness?: number;
+  validationStatus?: ValidationStatus;
+  conflictFlags?: number;
+  sourceCount?: number;
+  lastRefresh?: string;
+  reliabilityNote?: string;
+  topGap: string;
+  priority: 'critical' | 'high' | 'moderate' | 'low';
+  confidence: ConfidenceLevel;
+};
+
+export type DiagnoseNationalSummaryVm = {
+  regionCount: number;
+  teacherPopulation: number;
+  nationalScore: number;
+  averageCoverage: number;
+  averageDataQuality: number;
+  highPriorityRegions: number;
+  lastUpdated: string;
+};
+
 export type RegionalProfileVm = {
   name: string;
   teacherPopulation: number;
@@ -100,6 +132,7 @@ export type CohortVm = {
 
 export type ClusterVm = {
   name: string;
+  divisionName?: string;
   schools: number;
   teachers: number;
   coverage: number;
@@ -119,11 +152,16 @@ export type DataConfidenceVm = {
   accuracy: number;
   timeliness: number;
   confidence: ConfidenceLevel;
+  validationStatus?: ValidationStatus;
+  conflictFlags?: number;
+  lastRefresh?: string;
 };
 
 export type DiagnosePageVm = {
   sidebarItems: DiagnoseSidebarItemVm[];
-  regionData: RegionalProfileVm;
+  nationalSummary: DiagnoseNationalSummaryVm;
+  regions: DiagnoseRegionSummaryVm[];
+  regionData: RegionalProfileVm | null;
   gapFactors: GapFactorVm[];
   divisions: DivisionVm[];
   cohorts: CohortVm[];

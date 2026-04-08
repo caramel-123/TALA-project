@@ -7,6 +7,7 @@ import { DataManager } from "./pages/DataManager";
 import { Reports } from "./pages/Reports";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/NotFound";
+import { DiagnoseErrorState } from "./components/error/DiagnoseErrorState";
 
 export const router = createBrowserRouter([
   {
@@ -14,7 +15,7 @@ export const router = createBrowserRouter([
     Component: MainLayout,
     children: [
       { index: true, Component: Overview },
-      { path: "diagnose", Component: Diagnose },
+      { path: "diagnose", Component: Diagnose, errorElement: <DiagnoseErrorState /> },
       { path: "advise", Component: Advise },
       { path: "data-manager", Component: DataManager },
       { path: "reports", Component: Reports },
