@@ -121,6 +121,7 @@ export function normalizeClusters(raw: unknown, fallback: ClusterVm[]): ClusterV
 
     return {
       name: normalizeClusterName(record.name, index),
+      divisionName: toStringOrEmpty(record.divisionName ?? record.division) || undefined,
       schools: Math.max(0, Math.round(toNumberOrFallback(record.schools, 0))),
       teachers: Math.max(0, Math.round(toNumberOrFallback(record.teachers, 0))),
       coverage: clamp(toNumberOrFallback(record.coverage, 0), 0, 100),

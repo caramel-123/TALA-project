@@ -1,15 +1,22 @@
 import { Download, PlusCircle } from 'lucide-react';
 import { Button } from '../../../app/components/ui/button';
 import { StatusBadge } from '../../../app/components/dashboard/StatusBadge';
-import type { RegionalProfileVm } from '../../shared/types/view-models';
+import type {
+  DiagnoseNationalSummaryVm,
+  DiagnoseRegionSummaryVm,
+} from '../../shared/types/view-models';
 
 type DiagnoseHeaderProps = {
-  regionData: RegionalProfileVm;
+  nationalSummary: DiagnoseNationalSummaryVm;
+  selectedRegion: DiagnoseRegionSummaryVm | null;
+  selectedDivision: string | null;
+  selectedCluster: string | null;
   isLoading: boolean;
   usingFallback: boolean;
   loadError: string | null;
   onExportData: () => void;
   onAddToQueue: () => void;
+  onResetScope: () => void;
 };
 
 function getDataBadgeStatus(isLoading: boolean, usingFallback: boolean, loadError: string | null) {
@@ -25,33 +32,49 @@ function getDataBadgeStatus(isLoading: boolean, usingFallback: boolean, loadErro
 }
 
 export function DiagnoseHeader({
-  regionData,
+  nationalSummary,
+  selectedRegion,
+  selectedDivision,
+  selectedCluster,
   isLoading,
   usingFallback,
   loadError,
   onExportData,
   onAddToQueue,
+  onResetScope,
 }: DiagnoseHeaderProps) {
   const badge = getDataBadgeStatus(isLoading, usingFallback, loadError);
+  const scopePath = [
+    'National',
+    selectedRegion?.regionName,
+    selectedDivision,
+    selectedCluster,
+  ].filter(Boolean).join(' / ');
+
+  const lastUpdated = selectedRegion ? nationalSummary.lastUpdated : nationalSummary.lastUpdated;
 
   return (
     <section className="rounded-xl border border-[var(--light-gray)] bg-white p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--navy-blue)]">{regionData.name}</h1>
-          <p className="mt-1 text-sm text-[var(--mid-gray)]">Diagnose regional drivers and intervention readiness.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--medium-blue)]">Pillar 2 • Regional Gap Analyzer</p>
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--navy-blue)]">Diagnose Planning Dashboard</h1>
+          <p className="mt-1 text-sm text-[var(--mid-gray)]">National underserved area prioritization with formal regional drilldown and evidence quality context.</p>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--black)]">
-            <span>Teachers: <strong>{regionData.teacherPopulation.toLocaleString()}</strong></span>
+            <span>Scope: <strong>{scopePath}</strong></span>
             <span className="text-[var(--light-gray)]">•</span>
-            <span>STAR Coverage: <strong>{regionData.starCoverage}%</strong></span>
+            <span>Regions Covered: <strong>{nationalSummary.regionCount}</strong></span>
             <span className="text-[var(--light-gray)]">•</span>
-            <span>Last Updated: <strong>{regionData.lastUpdated}</strong></span>
+            <span>Last Updated: <strong>{lastUpdated}</strong></span>
             <StatusBadge status={badge.status} label={badge.label} />
           </div>
           {loadError && <p className="mt-2 text-xs text-[var(--deep-yellow)]">Data warning: {loadError}</p>}
         </div>
 
         <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" onClick={onResetScope}>
+            National Scope
+          </Button>
           <Button type="button" variant="outline" onClick={onExportData}>
             <Download className="h-4 w-4" />
             Export Data
@@ -61,21 +84,6 @@ export function DiagnoseHeader({
             Add to Queue
           </Button>
         </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <article className="rounded-lg border border-[var(--light-gray)] bg-[var(--pale-blue)] p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-[var(--mid-gray)]">Underserved Score</p>
-          <p className="mt-2 text-3xl font-semibold text-[var(--deep-yellow)]">{regionData.underservedScore.toFixed(1)}</p>
-        </article>
-        <article className="rounded-lg border border-[var(--light-gray)] bg-[var(--pale-blue)] p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-[var(--mid-gray)]">Data Quality</p>
-          <p className="mt-2 text-3xl font-semibold text-[var(--medium-blue)]">{regionData.dataQuality}%</p>
-        </article>
-        <article className="rounded-lg border border-[var(--light-gray)] bg-[var(--pale-blue)] p-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-[var(--mid-gray)]">Coverage Gap</p>
-          <p className="mt-2 text-3xl font-semibold text-[var(--navy-blue)]">{Math.max(0, 100 - regionData.starCoverage)}%</p>
-        </article>
       </div>
     </section>
   );

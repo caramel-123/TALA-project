@@ -62,6 +62,30 @@ export type DiagnoseSidebarItemVm = {
   active: boolean;
 };
 
+export type DiagnoseScopeLevel = 'national' | 'region' | 'division' | 'cluster';
+
+export type DiagnoseRegionSummaryVm = {
+  regionCode: string;
+  regionName: string;
+  teacherPopulation: number;
+  starCoverage: number;
+  underservedScore: number;
+  dataQuality: number;
+  topGap: string;
+  priority: 'critical' | 'high' | 'moderate' | 'low';
+  confidence: ConfidenceLevel;
+};
+
+export type DiagnoseNationalSummaryVm = {
+  regionCount: number;
+  teacherPopulation: number;
+  nationalScore: number;
+  averageCoverage: number;
+  averageDataQuality: number;
+  highPriorityRegions: number;
+  lastUpdated: string;
+};
+
 export type RegionalProfileVm = {
   name: string;
   teacherPopulation: number;
@@ -100,6 +124,7 @@ export type CohortVm = {
 
 export type ClusterVm = {
   name: string;
+  divisionName?: string;
   schools: number;
   teachers: number;
   coverage: number;
@@ -123,7 +148,9 @@ export type DataConfidenceVm = {
 
 export type DiagnosePageVm = {
   sidebarItems: DiagnoseSidebarItemVm[];
-  regionData: RegionalProfileVm;
+  nationalSummary: DiagnoseNationalSummaryVm;
+  regions: DiagnoseRegionSummaryVm[];
+  regionData: RegionalProfileVm | null;
   gapFactors: GapFactorVm[];
   divisions: DivisionVm[];
   cohorts: CohortVm[];

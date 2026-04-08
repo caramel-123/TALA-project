@@ -1,62 +1,30 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { Toaster } from '../components/ui/sonner';
 import { getDiagnosePageData } from '../../features/diagnose/api/diagnose';
 import { DiagnoseHeader } from '../../features/diagnose/components/DiagnoseHeader';
-import { DiagnoseSidebar } from '../../features/diagnose/components/DiagnoseSidebar';
-import {
-  ClusterMapView,
-  DataConfidenceView,
-  DivisionView,
-  GapFactorView,
-  RegionalProfilerView,
-  TeacherCohortView,
-  UnderservedScoreView,
-} from '../../features/diagnose/components/views';
+import { DiagnoseWorkspace } from '../../features/diagnose/components/DiagnoseWorkspace';
 import { devSeed } from '../../features/shared/dev-seed';
 import type { DiagnosePageVm } from '../../features/shared/types/view-models';
-
-type DiagnoseViewId =
-  | 'profiler'
-  | 'division'
-  | 'cluster'
-  | 'cohort'
-  | 'score'
-  | 'gap'
-  | 'confidence';
-
-const DEFAULT_VIEW: DiagnoseViewId = 'profiler';
-
-function isDiagnoseViewId(value: string): value is DiagnoseViewId {
-  return [
-    'profiler',
-    'division',
-    'cluster',
-    'cohort',
-    'score',
-    'gap',
-    'confidence',
-  ].includes(value);
-}
 
 export function Diagnose() {
   const [pageData, setPageData] = useState<DiagnosePageVm>(devSeed.diagnose);
   const [isLoading, setIsLoading] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeSidebar, setActiveSidebar] = useState<DiagnoseViewId>(DEFAULT_VIEW);
-
-  const { sidebarItems, regionData, gapFactors, divisions, cohorts, clusters, scoreFactors, dataQuality } = pageData;
+  const [selectedRegionCode, setSelectedRegionCode] = useState<string | null>(null);
+  const [selectedDivision, setSelectedDivision] = useState<string | null>(null);
+  const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadDiagnoseData() {
+    async function loadDiagnoseData(regionCode?: string) {
       setIsLoading(true);
 
       try {
-        const result = await getDiagnosePageData('040000000');
+        const result = await getDiagnosePageData(regionCode);
 
         if (!isMounted) {
           return;
@@ -88,87 +56,117 @@ export function Diagnose() {
   }, []);
 
   useEffect(() => {
-    if (!sidebarItems.length) {
-      setActiveSidebar(DEFAULT_VIEW);
+    if (!selectedRegionCode || pageData.divisions.length === 0) {
+      setSelectedDivision(null);
       return;
     }
 
-    const ids = sidebarItems.map((item) => item.id).filter(isDiagnoseViewId);
-
-    if (!ids.includes(activeSidebar)) {
-      setActiveSidebar(ids[0] || DEFAULT_VIEW);
+    if (!selectedDivision || !pageData.divisions.some((division) => division.name === selectedDivision)) {
+      setSelectedDivision(pageData.divisions[0].name);
     }
-  }, [activeSidebar, sidebarItems]);
+  }, [pageData.divisions, selectedDivision, selectedRegionCode]);
+
+  useEffect(() => {
+    if (!selectedRegionCode || !selectedDivision || pageData.clusters.length === 0) {
+      setSelectedCluster(null);
+      return;
+    }
+
+    const scopedClusters = pageData.clusters.filter((cluster) => !cluster.divisionName || cluster.divisionName === selectedDivision);
+    const firstCluster = scopedClusters[0] || pageData.clusters[0] || null;
+
+    if (!selectedCluster || !scopedClusters.some((cluster) => cluster.name === selectedCluster)) {
+      setSelectedCluster(firstCluster?.name || null);
+    }
+  }, [pageData.clusters, selectedCluster, selectedDivision, selectedRegionCode]);
 
   const handleExportData = () => {
-    toast.success('Exporting regional diagnosis summary...');
+    toast.success('Exporting diagnose planning dashboard data...');
   };
 
   const handleAddToQueue = () => {
-    toast.success('Region added to planning queue.');
+    toast.success('Selection added to planning queue.');
   };
 
-  const handleDivisionClick = (divisionName: string) => {
-    toast.info(`Opening detailed diagnostics for ${divisionName}.`);
+  const selectedRegion = pageData.regions.find((region) => region.regionCode === selectedRegionCode) || null;
+
+  const handleSelectRegion = async (regionCode: string) => {
+    setIsLoading(true);
+
+    try {
+      const result = await getDiagnosePageData(regionCode);
+      setPageData(result.data);
+      setUsingFallback(result.usingFallback);
+      setLoadError(result.error);
+      setSelectedRegionCode(regionCode);
+      setSelectedDivision(null);
+      setSelectedCluster(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load selected region data.');
+      setUsingFallback(true);
+      toast.error('Unable to load selected region. Showing available data.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const viewContent = useMemo<Record<DiagnoseViewId, JSX.Element>>(() => ({
-    profiler: (
-      <RegionalProfilerView
-        gapFactors={gapFactors}
-        divisions={divisions}
-        cohorts={cohorts}
-        scoreFactors={scoreFactors}
-        dataQuality={dataQuality}
-        underservedScore={regionData.underservedScore}
-      />
-    ),
-    division: <DivisionView divisions={divisions} onDivisionClick={handleDivisionClick} />,
-    cluster: <ClusterMapView clusters={clusters} />,
-    cohort: <TeacherCohortView cohorts={cohorts} />,
-    score: <UnderservedScoreView scoreFactors={scoreFactors} underservedScore={regionData.underservedScore} />,
-    gap: <GapFactorView gapFactors={gapFactors} />,
-    confidence: <DataConfidenceView dataQuality={dataQuality} />,
-  }), [clusters, cohorts, dataQuality, divisions, gapFactors, regionData.underservedScore, scoreFactors]);
+  const handleResetScope = async () => {
+    setIsLoading(true);
 
-  const safeSidebarItems = sidebarItems.length > 0 ? sidebarItems : devSeed.diagnose.sidebarItems;
+    try {
+      const result = await getDiagnosePageData();
+      setPageData(result.data);
+      setUsingFallback(result.usingFallback);
+      setLoadError(result.error);
+      setSelectedRegionCode(null);
+      setSelectedDivision(null);
+      setSelectedCluster(null);
+      toast.success('Returned to national diagnose scope.');
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to return to national scope.');
+      setUsingFallback(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex-1">
       <Toaster />
-      <div className="mx-auto w-full max-w-[1440px] p-6">
+      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
         <Breadcrumbs />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <DiagnoseSidebar
-            items={safeSidebarItems}
-            activeId={activeSidebar}
-            onSelect={(id) => {
-              if (isDiagnoseViewId(id)) {
-                setActiveSidebar(id);
-              }
-            }}
+        <main className="mt-6 space-y-6" aria-live="polite">
+          <DiagnoseHeader
+            nationalSummary={pageData.nationalSummary}
+            selectedRegion={selectedRegion}
+            selectedDivision={selectedDivision}
+            selectedCluster={selectedCluster}
+            isLoading={isLoading}
+            usingFallback={usingFallback}
+            loadError={loadError}
+            onExportData={handleExportData}
+            onAddToQueue={handleAddToQueue}
+            onResetScope={handleResetScope}
           />
 
-          <main className="space-y-6" aria-live="polite">
-            <DiagnoseHeader
-              regionData={regionData}
-              isLoading={isLoading}
-              usingFallback={usingFallback}
-              loadError={loadError}
-              onExportData={handleExportData}
-              onAddToQueue={handleAddToQueue}
-            />
+          {isLoading && (
+            <section className="rounded-xl border border-[var(--light-gray)] bg-white p-4 text-sm text-[var(--mid-gray)]">
+              Loading diagnose investigation workspace...
+            </section>
+          )}
 
-            {isLoading && (
-              <section className="rounded-xl border border-[var(--light-gray)] bg-white p-4 text-sm text-[var(--mid-gray)]">
-                Loading diagnose analytics...
-              </section>
-            )}
-
-            {viewContent[activeSidebar]}
-          </main>
-        </div>
+          <DiagnoseWorkspace
+            data={pageData}
+            selectedRegionCode={selectedRegionCode}
+            selectedDivision={selectedDivision}
+            selectedCluster={selectedCluster}
+            onSelectRegion={handleSelectRegion}
+            onClearRegion={handleResetScope}
+            onSelectDivision={setSelectedDivision}
+            onSelectCluster={setSelectedCluster}
+          />
+        </main>
       </div>
     </div>
   );
