@@ -43,8 +43,6 @@ type GenerationStats = {
   invalidNumericsInjected: number;
   invalidBooleansInjected: number;
   regionAliasIssuesInjected: number;
-  intentionallyBrokenRows: number;
-  emptyRowsInjected: number;
 };
 
 const REGIONS: RegionDef[] = [
@@ -71,21 +69,49 @@ const REGIONS: RegionDef[] = [
 ];
 
 const SPECIALIZATIONS = [
-  'General Education',
   'Mathematics',
-  'Science',
-  'English',
-  'ICT',
-  'Languages',
+  'General Science',
+  'Biology',
+  'Chemistry',
+  'Physics',
+  'Earth Science',
+  'Integrated Science',
 ] as const;
 
 const SPECIALIZATION_TYPO_VARIANTS: Record<string, string[]> = {
-  'General Education': ['General Edu', 'Genral Education', 'Gen Ed', 'general education'],
-  Mathematics: ['Math', 'Mathemathics', 'GEN MATH', 'mathematics'],
-  Science: ['Sci', 'Sciense', 'GEN SCI', 'science'],
-  English: ['Englsh', 'Language Arts', 'english', 'ENGLISH'],
-  ICT: ['I.C.T', 'Information Tech', 'ict', 'IC T'],
-  Languages: ['Langauges', 'Language', 'languages', 'LANGUAGE ARTS'],
+  Mathematics: [
+    'Math',
+    'math',
+    'maths',
+    'Maths',
+    'mathematics',
+    'Mathematics',
+    'math education',
+    'gen math',
+    'General Math',
+    'applied math',
+    'Applied Mathematics',
+    'Mathemathics',
+    '  Mathematics  ',
+  ],
+  'General Science': [
+    'GenSci',
+    'Gensci',
+    'gen sci',
+    'general sci',
+    'General Sci',
+    'general science',
+    'General Science',
+    'GEN SCI',
+    'sci',
+    'Science',
+    'Gen Science',
+  ],
+  Biology: ['Biolgy', 'bio', 'biology'],
+  Chemistry: ['Chemstry', 'Chem', 'chemistry'],
+  Physics: ['Physcs', 'Phys', 'physics'],
+  'Earth Science': ['Earth Sci', 'EarthScience', 'earth science'],
+  'Integrated Science': ['Integrated Science', 'integ science', 'Integrated Sci', 'Int Science', 'integrated science'],
 };
 
 const FIRST_NAMES = [
@@ -144,7 +170,6 @@ const LAST_NAMES = [
 const BLANK_LIKE_TOKENS = ['', ' ', 'N/A', 'NA', 'null', '-'] as const;
 const BOOLEAN_TRUE_VARIANTS = ['Yes', 'Y', 'TRUE', '1', 'yes'] as const;
 const BOOLEAN_FALSE_VARIANTS = ['No', 'N', 'FALSE', '0', 'no'] as const;
-const BOOLEAN_INVALID_VARIANTS = ['maybe', 'consented', 'pending'] as const;
 
 const DEFAULT_DIRTY_BY_SEVERITY: Record<SeverityLevel, number> = {
   light: 0.28,
@@ -275,7 +300,7 @@ function buildCanonicalTeacherRows(rowCount: number, rng: SeededRng): TeacherRow
 }
 
 function chooseWeightedMutationIndex(rng: SeededRng): number {
-  const weights = [18, 15, 12, 16, 13, 10, 9, 7];
+  const weights = [16, 14, 12, 14, 11, 9, 18, 6];
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let threshold = rng.next() * total;
 
@@ -348,32 +373,26 @@ function mutateCodeFormatting(row: TeacherRow, rng: SeededRng): void {
 }
 
 function mutateNumericValues(row: TeacherRow, rng: SeededRng, stats: GenerationStats): void {
-  const years = Number(row.years_experience);
-  const training = Number(row.training_hours_last_12m);
+  const yearsSeed = row.years_experience.match(/\d+/)?.[0];
+  const trainingSeed = row.training_hours_last_12m.match(/\d+/)?.[0];
+
+  const years = yearsSeed ? Number(yearsSeed) : rng.int(0, 38);
+  const training = trainingSeed ? Number(trainingSeed) : rng.int(0, 180);
 
   const yearFormats = [
     `${years}`,
     ` ${years} `,
     `${years} yrs`,
-    `${years},0`,
-    `$${years}`,
-    years > 0 ? `${years - 1} years` : '0 years',
-    'unknown',
-    '-4',
-    '88',
+    `${String(years).padStart(2, '0')}`,
+    years > 0 ? `${years} years` : '0 years',
   ];
 
   const trainingFormats = [
     `${training}`,
     ` ${training} `,
     `${training} hrs`,
-    `${training},0`,
     `${training} hours`,
-    '$120',
-    'N/A',
-    '-15',
-    '2,500',
-    'about 40',
+    `${String(training).padStart(2, '0')}`,
   ];
 
   row.years_experience = rng.pick(yearFormats);
@@ -382,63 +401,35 @@ function mutateNumericValues(row: TeacherRow, rng: SeededRng, stats: GenerationS
 }
 
 function mutateBooleanValues(row: TeacherRow, rng: SeededRng, stats: GenerationStats): void {
-  const variants = [...BOOLEAN_TRUE_VARIANTS, ...BOOLEAN_FALSE_VARIANTS, ...BOOLEAN_INVALID_VARIANTS];
+  const variants = [...BOOLEAN_TRUE_VARIANTS, ...BOOLEAN_FALSE_VARIANTS];
   row.consent_flag = rng.pick(variants);
-
-  if (BOOLEAN_INVALID_VARIANTS.includes(row.consent_flag as (typeof BOOLEAN_INVALID_VARIANTS)[number])) {
-    stats.invalidBooleansInjected += 1;
-  }
 }
 
 function mutateBlankLikeValues(row: TeacherRow, rng: SeededRng, stats: GenerationStats): void {
   const candidates: TeacherHeader[] = [
-    'teacher_name',
     'region_name',
-    'specialization',
-    'years_experience',
     'training_hours_last_12m',
     'consent_flag',
+    'submitted_at',
   ];
 
   const selected = rng.pick(candidates);
   row[selected] = rng.pick(BLANK_LIKE_TOKENS);
 
-  if (rng.bool(0.18)) {
-    row.teacher_external_id = rng.pick(BLANK_LIKE_TOKENS);
-  }
-
   stats.missingValuesInjected += 1;
 }
 
 function mutateSpecialization(row: TeacherRow, rng: SeededRng): void {
-  const typoPool = SPECIALIZATION_TYPO_VARIANTS[row.specialization] || ['Spec-Legacy', `${row.specialization}??`];
+  const typoPool = SPECIALIZATION_TYPO_VARIANTS[row.specialization] || [row.specialization];
   row.specialization = rng.pick(typoPool);
-
-  if (rng.bool(0.2)) {
-    row.specialization = `${row.specialization}...`;
-  }
 }
 
 function mutateStrayPunctuation(row: TeacherRow, rng: SeededRng): void {
-  row.teacher_name = `${row.teacher_name}${rng.pick(['.', ',', ';', ' !!'])}`;
+  row.teacher_name = `${row.teacher_name}${rng.pick(['.', ',', ';'])}`;
 
-  if (rng.bool(0.45)) {
-    row.region_name = `${row.region_name}${rng.pick(['*', ' #', ' (tmp)'])}`;
+  if (rng.bool(0.15)) {
+    row.region_name = `${row.region_name}${rng.pick([',', ' ;'])}`;
   }
-}
-
-function mutateIntentionallyBroken(row: TeacherRow, rng: SeededRng, stats: GenerationStats): void {
-  row.teacher_external_id = rng.pick(['', '???', 'TCH-??', 'N/A']);
-  row.teacher_name = rng.pick(['', '   ', 'N/A']);
-  row.region_code = rng.pick(['000000000', 'xx', 'N/A']);
-  row.region_name = rng.pick(['Metro Mnl', 'Unknown Region', '???']);
-  row.canonical_region = rng.pick(['unknown', 'NCR???', 'REGION X']);
-  row.division_code = rng.pick(['DIV-XX', '---', '']);
-  row.school_id_code = rng.pick(['SCH-????', 'none', '']);
-  row.years_experience = rng.pick(['unknown', '-50', '999', 'ten plus']);
-  row.training_hours_last_12m = rng.pick(['infinite', '-20', '4,000', '']);
-  row.consent_flag = rng.pick(['pending', 'maybe', '']);
-  stats.intentionallyBrokenRows += 1;
 }
 
 function cloneRow(row: TeacherRow): TeacherRow {
@@ -462,8 +453,6 @@ function applyMessiness(
     invalidNumericsInjected: 0,
     invalidBooleansInjected: 0,
     regionAliasIssuesInjected: 0,
-    intentionallyBrokenRows: 0,
-    emptyRowsInjected: 0,
   };
 
   const dirtyTarget = Math.max(1, Math.floor(rows.length * dirtyRatio));
@@ -501,9 +490,11 @@ function applyMessiness(
       }
     }
 
-    if (severity === 'heavy' && rng.bool(0.12)) {
-      mutateIntentionallyBroken(row, rng, stats);
+    // Ensure specialization aliases are visible enough for demo standardization.
+    if (rng.bool(0.45)) {
+      mutateSpecialization(row, rng);
     }
+
   });
 
   stats.dirtyRows = dirtyIndexes.size;
@@ -520,7 +511,7 @@ function applyMessiness(
     const duplicateSource = rows[rng.int(0, rows.length - 1)];
     const nearDuplicate = cloneRow(duplicateSource);
     nearDuplicate.teacher_name = ` ${nearDuplicate.teacher_name.replace(/\s+/g, '  ')} `;
-    nearDuplicate.training_hours_last_12m = rng.pick(['40 hrs', '55', 'N/A', '2,200']);
+    nearDuplicate.training_hours_last_12m = rng.pick(['40 hrs', '55', '72 hours', ' 90 ']);
     rows.push(nearDuplicate);
     stats.nearDuplicateRowsInjected += 1;
   }
@@ -537,25 +528,6 @@ function applyMessiness(
     target.teacher_external_id = source.teacher_external_id;
     target.teacher_name = `${target.teacher_name} Jr`;
     stats.duplicateIdsInjected += 1;
-  }
-
-  const emptyRowCount = severity === 'heavy' ? 6 : severity === 'medium' ? 4 : 2;
-  for (let index = 0; index < emptyRowCount; index += 1) {
-    rows.push({
-      teacher_external_id: '',
-      teacher_name: '',
-      region_code: '',
-      region_name: '',
-      canonical_region: '',
-      division_code: '',
-      school_id_code: '',
-      specialization: '',
-      years_experience: '',
-      training_hours_last_12m: '',
-      consent_flag: '',
-      submitted_at: '',
-    });
-    stats.emptyRowsInjected += 1;
   }
 
   return { rows, stats };
@@ -723,8 +695,6 @@ function runGenerate(options: Record<string, string>): void {
   console.log(`Invalid numerics injected: ${messy.stats.invalidNumericsInjected}`);
   console.log(`Invalid booleans injected: ${messy.stats.invalidBooleansInjected}`);
   console.log(`Region alias issues injected: ${messy.stats.regionAliasIssuesInjected}`);
-  console.log(`Intentionally broken rows: ${messy.stats.intentionallyBrokenRows}`);
-  console.log(`Extra empty rows injected: ${messy.stats.emptyRowsInjected}`);
 }
 
 function runClean(options: Record<string, string>): void {

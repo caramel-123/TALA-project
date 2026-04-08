@@ -31,8 +31,8 @@ const KNOWN_COLUMN_KEYS = new Set([
 const REQUIRED_COLUMN_KEYS = ['teacher_external_id'];
 
 const NUMERIC_RULES: Record<string, { min: number; max: number }> = {
-  years_experience: { min: 0, max: 70 },
-  training_hours_last_12m: { min: 0, max: 2000 },
+  years_experience: { min: 0, max: 50 },
+  training_hours_last_12m: { min: 0, max: 320 },
 };
 
 const DATE_FIELDS = new Set(['submitted_at', 'participation_date']);
@@ -64,25 +64,51 @@ const REGION_ALIAS_TO_CANONICAL: Record<string, string> = {
 };
 
 const SPECIALIZATION_ALIAS_TO_CANONICAL: Record<string, string> = {
-  science: 'Science',
-  sci: 'Science',
-  gen_sci: 'Science',
-  general_science: 'Science',
-  sciense: 'Science',
+  gensci: 'General Science',
+  gen_sci: 'General Science',
+  general_sci: 'General Science',
+  gen_science: 'General Science',
+  science: 'General Science',
+  sci: 'General Science',
+  general_science: 'General Science',
+  sciense: 'General Science',
   mathematics: 'Mathematics',
   math: 'Mathematics',
+  maths: 'Mathematics',
+  math_education: 'Mathematics',
   gen_math: 'Mathematics',
+  general_math: 'Mathematics',
+  applied_math: 'Mathematics',
+  applied_mathematics: 'Mathematics',
   mathemathics: 'Mathematics',
-  english: 'English',
-  language_arts: 'Languages',
-  languages: 'Languages',
-  langauges: 'Languages',
-  general_education: 'General Education',
-  gen_ed: 'General Education',
-  ict: 'ICT',
-  information_technology: 'ICT',
-  information_tech: 'ICT',
+  biology: 'Biology',
+  bio: 'Biology',
+  biolgy: 'Biology',
+  chemistry: 'Chemistry',
+  chem: 'Chemistry',
+  chemstry: 'Chemistry',
+  physics: 'Physics',
+  phys: 'Physics',
+  physcs: 'Physics',
+  earth_science: 'Earth Science',
+  earth_sci: 'Earth Science',
+  earthsci: 'Earth Science',
+  earthscience: 'Earth Science',
+  integ_science: 'Integrated Science',
+  integrated_science: 'Integrated Science',
+  integrated_sci: 'Integrated Science',
+  int_science: 'Integrated Science',
 };
+
+const ALLOWED_SPECIALIZATIONS = new Set([
+  'Mathematics',
+  'General Science',
+  'Biology',
+  'Chemistry',
+  'Physics',
+  'Earth Science',
+  'Integrated Science',
+]);
 
 const HEADER_ALIAS_TO_CANONICAL: Record<string, string> = {
   teacherid: 'teacher_external_id',
@@ -579,6 +605,25 @@ export function validateDataset(dataset: ParsedSpreadsheetDataset): DatasetValid
             `region and canonical_region do not match: "${region}" vs "${canonicalRegion}".`,
             rowIndex,
             'canonical_region',
+          );
+        }
+      }
+    }
+
+    if (dataset.headers.includes('specialization')) {
+      const specialization = normalizeBlankLike(row.specialization || '');
+
+      if (specialization) {
+        const canonicalSpecialization = canonicalizeSpecialization(specialization) || toTitleCase(specialization);
+
+        if (!ALLOWED_SPECIALIZATIONS.has(canonicalSpecialization)) {
+          pushIssue(
+            issues,
+            'out_of_range_value',
+            'moderate',
+            `specialization "${specialization}" is outside the allowed math/science domain.`,
+            rowIndex,
+            'specialization',
           );
         }
       }

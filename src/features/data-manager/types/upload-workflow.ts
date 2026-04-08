@@ -75,4 +75,7 @@ export type DatasetLoadResult = {
   rowCount: number;
   unresolvedIssues: number;
   warning: string | null;
+  dataSourceId: string | null;
+  batchId: string | null;
+  loadedToTables: string[];
 };

@@ -184,6 +184,11 @@ async function runLiveLoad(dataset: ParsedSpreadsheetDataset, validation: Datase
     rowCount: dataset.rows.length,
     unresolvedIssues: validation.summary.open,
     warning: null,
+    dataSourceId: createdSource.id,
+    batchId,
+    loadedToTables: validation.issues.length > 0
+      ? ['data_sources', 'upload_batches', 'teacher_records_staging', 'validation_issues']
+      : ['data_sources', 'upload_batches', 'teacher_records_staging'],
   };
 }
 
@@ -200,6 +205,9 @@ export async function loadDatasetToRegistry(
       rowCount: dataset.rows.length,
       unresolvedIssues: validation.summary.open,
       warning: 'Supabase is not configured. Data load is simulated in demo mode.',
+      dataSourceId: null,
+      batchId: null,
+      loadedToTables: [],
     };
   }
 
@@ -216,6 +224,9 @@ export async function loadDatasetToRegistry(
       rowCount: dataset.rows.length,
       unresolvedIssues: validation.summary.open,
       warning: `Supabase write path is unavailable (${message}). Load was simulated for the demo.`,
+      dataSourceId: null,
+      batchId: null,
+      loadedToTables: [],
     };
   }
 }

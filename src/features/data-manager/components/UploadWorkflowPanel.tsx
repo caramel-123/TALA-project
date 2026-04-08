@@ -16,6 +16,7 @@ import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { ValidationIssuesSheet } from './ValidationIssuesSheet';
 import { loadDatasetToRegistry } from '../api/upload-workflow';
 import type {
+  CleaningSummary,
   DatasetLoadResult,
   DatasetValidationResult,
   ParsedSpreadsheetDataset,
@@ -92,6 +93,8 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
   const [cleanedDataset, setCleanedDataset] = useState<ParsedSpreadsheetDataset | null>(null);
   const [cleanedValidation, setCleanedValidation] = useState<DatasetValidationResult | null>(null);
   const [cleaningSummary, setCleaningSummary] = useState<string | null>(null);
+  const [cleaningMetrics, setCleaningMetrics] = useState<CleaningSummary | null>(null);
+  const [lastLoadResult, setLastLoadResult] = useState<DatasetLoadResult | null>(null);
   const [issueSheetOpen, setIssueSheetOpen] = useState(false);
   const [focusTarget, setFocusTarget] = useState<{ rowIndex: number | null; columnKey: string | null; token: number }>({
     rowIndex: null,
@@ -168,6 +171,8 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
       setRawValidation(validation);
       setCleanedDataset(null);
       setCleanedValidation(null);
+      setCleaningMetrics(null);
+      setLastLoadResult(null);
       setCleaningSummary(
         normalized.renamedHeaders > 0
           ? `${normalized.renamedHeaders} header names were standardized for schema mapping.`
@@ -219,6 +224,8 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
 
     setCleanedDataset(nextCleaned);
     setCleanedValidation(validation);
+    setCleaningMetrics(summary);
+    setLastLoadResult(null);
     setUndoSnapshot(null);
     setStage('ready');
 
@@ -318,6 +325,7 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
     }
 
     onLoadComplete(loadResult);
+    setLastLoadResult(loadResult);
     setStage('loaded');
   };
 
@@ -401,10 +409,16 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
         <div className="mb-4 overflow-x-auto rounded border border-[#D8D8D8] bg-[#EBF4FB] p-2">
           <div className="flex min-w-max items-center gap-2 whitespace-nowrap">
             <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+              <strong>File:</strong> {rawDataset.fileName}
+            </div>
+            <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
               <strong>Rows:</strong> {rawDataset.rows.length.toLocaleString()}
             </div>
             <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
               <strong>Columns:</strong> {rawDataset.headers.length.toLocaleString()}
+            </div>
+            <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+              <strong>Status:</strong> {getValidationStatus(currentValidation)}
             </div>
 
             <div className="h-5 w-px bg-[#A8C8E8]" aria-hidden="true" />
@@ -509,6 +523,23 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
 
       {cleanedDataset && cleanedValidation && (
         <div className="space-y-3">
+          {cleaningMetrics && (
+            <div className="flex flex-wrap items-center gap-3 rounded border border-[#D8D8D8] bg-white px-3 py-2">
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Rows Processed:</strong> {rawDataset?.rows.length.toLocaleString() || 0}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Values Standardized:</strong> {(cleaningMetrics.trimmedValues + cleaningMetrics.coercedNumbers + cleaningMetrics.normalizedDates).toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Duplicates Removed:</strong> {cleaningMetrics.removedDuplicateRows.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#1A1A1A' }}>
+                <strong>Remaining Issues:</strong> {cleanedValidation.summary.open.toLocaleString()}
+              </span>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#D8D8D8] bg-[#EBF4FB] p-3">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4 text-[#2E6DA4]" />
@@ -561,12 +592,28 @@ export function UploadWorkflowPanel({ onLoadComplete }: UploadWorkflowPanelProps
             onDeleteRow={handleDeleteRow}
           />
 
-          {stage === 'loaded' && (
-            <div className="flex items-center gap-2 rounded border border-[#A8C8E8] bg-[#EBF4FB] px-3 py-2">
+          {lastLoadResult && (
+            <div className="flex flex-wrap items-center gap-3 rounded border border-[#A8C8E8] bg-[#EBF4FB] px-3 py-2">
               <CheckCircle2 className="h-4 w-4 text-[#2E6DA4]" />
               <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
-                Load step completed. Registry refresh triggered.
+                {lastLoadResult.mode === 'live' ? 'Loaded to Supabase successfully.' : 'Load simulated in demo mode.'}
               </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
+                <strong>Rows:</strong> {lastLoadResult.rowCount.toLocaleString()}
+              </span>
+              <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
+                <strong>Source:</strong> {lastLoadResult.dataSourceName}
+              </span>
+              {lastLoadResult.batchId && (
+                <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
+                  <strong>Batch:</strong> {lastLoadResult.batchId}
+                </span>
+              )}
+              {lastLoadResult.mode === 'live' && lastLoadResult.loadedToTables.length > 0 && (
+                <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#1A1A1A' }}>
+                  <strong>Tables:</strong> {lastLoadResult.loadedToTables.join(', ')}
+                </span>
+              )}
             </div>
           )}
         </div>

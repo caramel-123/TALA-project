@@ -11,9 +11,9 @@ import {
 
 const navItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
+  { path: '/data-manager', label: 'Integrate', icon: Database },
   { path: '/diagnose', label: 'Diagnose', icon: Activity },
   { path: '/advise', label: 'Advise', icon: Lightbulb },
-  { path: '/data-manager', label: 'Integrate', icon: Database },
   { path: '/reports', label: 'Reports', icon: FileText },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
