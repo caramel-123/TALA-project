@@ -23,12 +23,13 @@ export function TopNavigation() {
 
   return (
     <nav className="w-full bg-[#1B3A5C] text-white sticky top-0 z-50">
-      <div className="flex items-center h-14 px-6">
+      <div className="flex items-center h-16 px-6">
         <Link 
           to="/diagnose" 
           className="flex items-center gap-2 font-bold mr-8 hover:text-[#E8C94F] transition-colors"
         >
-          <img src={talaLogo} alt="TALA" className="h-8 w-auto object-contain" />
+          <img src={talaLogo} alt="TALA" className="h-10 w-auto object-contain" />
+          <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '20px', lineHeight: '1', letterSpacing: '0.02em' }}>TALA</span>
         </Link>
         
         <div className="flex items-center gap-1">

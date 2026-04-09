@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { MainLayout } from "./components/layout/MainLayout";
+import { Landing } from "./pages/Landing";
 import { Diagnose } from "./pages/Diagnose";
 import { Advise } from "./pages/Advise";
 import { DataManager } from "./pages/DataManager";
@@ -14,9 +15,12 @@ function RedirectToDiagnose() {
 export const router = createBrowserRouter([
   {
     path: "/",
+    Component: Landing,
+  },
+  {
+    path: "/",
     Component: MainLayout,
     children: [
-      { index: true, Component: RedirectToDiagnose },
       { path: "diagnose", Component: Diagnose, errorElement: <DiagnoseErrorState /> },
       { path: "advise", Component: Advise },
       { path: "data-manager", Component: DataManager },
