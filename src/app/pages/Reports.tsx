@@ -55,22 +55,23 @@ function generatePDF(config: ReportConfig): void {
   const contentW = pageW - margin * 2;
   let y = 0;
 
-  const navy = [27, 58, 92] as const;
-  const medBlue = [46, 109, 164] as const;
-  const yellow = [232, 201, 79] as const;
-  const lightBlue = [213, 232, 247] as const;
-  const gray = [136, 136, 136] as const;
-  const black = [26, 26, 26] as const;
-  const white = [255, 255, 255] as const;
-  const paleBlue = [235, 244, 251] as const;
+  const setNavy = () => doc.setFillColor(27, 58, 92);
+  const setMedBlue = () => doc.setFillColor(46, 109, 164);
+  const setLightBlue = () => doc.setFillColor(213, 232, 247);
+  const setPaleBlue = () => doc.setFillColor(235, 244, 251);
+  const setYellowFill = () => doc.setFillColor(232, 201, 79);
+  const setWhiteFill = () => doc.setFillColor(255, 255, 255);
+  const setWhiteText = () => doc.setTextColor(255, 255, 255);
+  const setNavyText = () => doc.setTextColor(27, 58, 92);
+  const setBlackText = () => doc.setTextColor(26, 26, 26);
+  const setGrayText = () => doc.setTextColor(136, 136, 136);
 
   const addPage = () => {
     doc.addPage();
     y = 20;
-    // running header
-    doc.setFillColor(...navy);
+    setNavy();
     doc.rect(0, 0, pageW, 12, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.text('TALA: Teacher Analytics and Localized Action  |  STAR Program Planning Intelligence Layer', margin, 8);
@@ -83,12 +84,12 @@ function generatePDF(config: ReportConfig): void {
   };
 
   // ── Cover header ──
-  doc.setFillColor(...navy);
+  setNavy();
   doc.rect(0, 0, pageW, 55, 'F');
-  doc.setFillColor(...yellow[0], ...yellow.slice(1) as [number, number]);
+  setYellowFill();
   doc.rect(0, 55, pageW, 12, 'F');
 
-  doc.setTextColor(...white);
+  setWhiteText();
   doc.setFontSize(28);
   doc.setFont('helvetica', 'bold');
   doc.text('TALA', margin, 22);
@@ -99,12 +100,12 @@ function generatePDF(config: ReportConfig): void {
   doc.setFontSize(9);
   doc.text('STAR Program Planning Intelligence Layer', margin, 38);
 
-  doc.setTextColor(...black);
+  doc.setTextColor(26, 26, 26);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text(`${config.type}  —  ${config.scope}`, margin, 62);
 
-  doc.setTextColor(...gray);
+  setGrayText();
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   const now = new Date();
@@ -115,9 +116,9 @@ function generatePDF(config: ReportConfig): void {
   // ── KPIs ──
   if (config.sections.includes('KPIs')) {
     checkY(30);
-    doc.setFillColor(...medBlue);
+    setMedBlue();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('KEY PERFORMANCE INDICATORS', margin + 3, y + 5);
@@ -126,15 +127,15 @@ function generatePDF(config: ReportConfig): void {
     const cardW = contentW / 4 - 2;
     SAMPLE_DATA.kpis.forEach((kpi, i) => {
       const x = margin + i * (cardW + 2.67);
-      doc.setFillColor(...lightBlue);
+      setLightBlue();
       doc.rect(x, y, cardW, 18, 'F');
-      doc.setTextColor(...navy);
+      setNavyText();
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text(kpi.value, x + cardW / 2, y + 10, { align: 'center' });
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...gray);
+      setGrayText();
       doc.text(kpi.label, x + cardW / 2, y + 15, { align: 'center' });
     });
     y += 24;
@@ -143,20 +144,19 @@ function generatePDF(config: ReportConfig): void {
   // ── Gap Analysis ──
   if (config.sections.includes('Gap Analysis')) {
     checkY(50);
-    doc.setFillColor(...navy);
+    setNavy();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('GAP ANALYSIS — UNDERSERVED AREA SCORES', margin + 3, y + 5);
     y += 10;
 
-    // table header
     const cols = [55, 25, 70, 30];
     const headers = ['Region / Division', 'Score', 'Top Gap Factor', 'Confidence'];
-    doc.setFillColor(...medBlue);
+    setMedBlue();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     let cx = margin + 2;
@@ -165,9 +165,9 @@ function generatePDF(config: ReportConfig): void {
 
     SAMPLE_DATA.gapAnalysis.forEach((row, ri) => {
       checkY(8);
-      doc.setFillColor(...(ri % 2 === 0 ? paleBlue : white));
+      if (ri % 2 === 0) setPaleBlue(); else setWhiteFill();
       doc.rect(margin, y, contentW, 7, 'F');
-      doc.setTextColor(...black);
+      setBlackText();
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'normal');
       cx = margin + 2;
@@ -176,9 +176,8 @@ function generatePDF(config: ReportConfig): void {
         doc.text(String(cell), cx, y + 5);
         cx += cols[i];
       });
-      // score bar
+      setMedBlue();
       const barX = margin + cols[0] + 2;
-      doc.setFillColor(...medBlue);
       doc.rect(barX, y + 5.5, (row.score / 100) * 20, 1.2, 'F');
       y += 7;
     });
@@ -188,9 +187,9 @@ function generatePDF(config: ReportConfig): void {
   // ── Recommendations ──
   if (config.sections.includes('Recommendations')) {
     checkY(50);
-    doc.setFillColor(...navy);
+    setNavy();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('INTERVENTION RECOMMENDATIONS', margin + 3, y + 5);
@@ -198,9 +197,9 @@ function generatePDF(config: ReportConfig): void {
 
     const cols2 = [55, 75, 30, 20];
     const headers2 = ['Region', 'Recommended Intervention', 'Modality', 'Priority'];
-    doc.setFillColor(...medBlue);
+    setMedBlue();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     let cx2 = margin + 2;
@@ -209,9 +208,9 @@ function generatePDF(config: ReportConfig): void {
 
     SAMPLE_DATA.recommendations.forEach((row, ri) => {
       checkY(8);
-      doc.setFillColor(...(ri % 2 === 0 ? paleBlue : white));
+      if (ri % 2 === 0) setPaleBlue(); else setWhiteFill();
       doc.rect(margin, y, contentW, 7, 'F');
-      doc.setTextColor(...black);
+      setBlackText();
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'normal');
       cx2 = margin + 2;
@@ -227,9 +226,9 @@ function generatePDF(config: ReportConfig): void {
   // ── Data Quality ──
   if (config.sections.includes('Data Quality Notes')) {
     checkY(50);
-    doc.setFillColor(...navy);
+    setNavy();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('DATA QUALITY SUMMARY', margin + 3, y + 5);
@@ -237,9 +236,9 @@ function generatePDF(config: ReportConfig): void {
 
     const cols3 = [65, 30, 35, 35];
     const headers3 = ['Data Source', 'Completeness', 'Last Updated', 'Status'];
-    doc.setFillColor(...medBlue);
+    setMedBlue();
     doc.rect(margin, y, contentW, 7, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     let cx3 = margin + 2;
@@ -248,9 +247,9 @@ function generatePDF(config: ReportConfig): void {
 
     SAMPLE_DATA.dataQuality.forEach((row, ri) => {
       checkY(8);
-      doc.setFillColor(...(ri % 2 === 0 ? paleBlue : white));
+      if (ri % 2 === 0) setPaleBlue(); else setWhiteFill();
       doc.rect(margin, y, contentW, 7, 'F');
-      doc.setTextColor(...black);
+      setBlackText();
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'normal');
       cx3 = margin + 2;
@@ -268,9 +267,9 @@ function generatePDF(config: ReportConfig): void {
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
     const pageH = doc.internal.pageSize.getHeight();
-    doc.setFillColor(...navy);
+    setNavy();
     doc.rect(0, pageH - 10, pageW, 10, 'F');
-    doc.setTextColor(...white);
+    setWhiteText();
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.text('STAR Program  |  TALA Planning Intelligence Layer  |  Confidential — For Planning Use Only', margin, pageH - 4);
