@@ -57,8 +57,7 @@ export function DiagnoseHeader({
     <section className="rounded-xl border border-[var(--light-gray)] bg-white p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--medium-blue)]">Pillar 2 • Regional Gap Analyzer</p>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--navy-blue)]">Diagnose Planning Dashboard</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--navy-blue)]">Diagnose</h1>
           <p className="mt-1 text-sm text-[var(--mid-gray)]">National underserved area prioritization with formal regional drilldown and evidence quality context.</p>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--black)]">
             <span>Scope: <strong>{scopePath}</strong></span>

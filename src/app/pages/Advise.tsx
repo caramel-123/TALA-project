@@ -27,6 +27,12 @@ type SimulationResult = {
   teachersReached: number;
   deliveryConfidence: 'high' | 'moderate';
   risk: 'low' | 'moderate' | 'high';
+  prioritizedRecommendations: string[];
+  deferredRecommendations: string[];
+  budgetUsed: number;
+  trainersUsed: number;
+  slotsUsed: number;
+  tradeoffSummary: string;
 };
 
 function getPriorityFromScore(score: number): 'critical' | 'high' | 'moderate' | 'low' {
@@ -92,6 +98,36 @@ function buildWhyBullets(rec: RecommendationVm): string[] {
 
 function confidenceWeight(confidence: RecommendationVm['confidence']): number {
   return confidence === 'high' ? 2 : 1;
+}
+
+function estimateBudgetPerRecommendation(resourceRequirement: string): number {
+  const normalizedRequirement = resourceRequirement.toLowerCase();
+
+  if (normalizedRequirement.includes('high')) {
+    return 1_200_000;
+  }
+
+  if (normalizedRequirement.includes('medium')) {
+    return 800_000;
+  }
+
+  return 500_000;
+}
+
+function summarizeTradeoff(prioritizedCount: number, deferredCount: number, risk: SimulationResult['risk']): string {
+  if (prioritizedCount === 0) {
+    return 'Current constraints produce no viable rollout; increase inputs before approving.';
+  }
+
+  if (deferredCount === 0) {
+    return 'Current capacity can execute all active recommendations in one planning cycle.';
+  }
+
+  if (risk === 'high') {
+    return 'Compressed timeline raises implementation risk; defer lower-urgency items or extend rollout timing.';
+  }
+
+  return `This plan prioritizes ${prioritizedCount} recommendations and defers ${deferredCount} due to capacity limits.`;
 }
 
 export function Advise() {
@@ -286,11 +322,28 @@ export function Advise() {
     const slots = toNumber(simulationInputs.slots, 18);
     const timeline = toNumber(simulationInputs.timeline, 6);
 
-    const expectedCoverageLift = Math.max(
-      2,
-      Math.round((budget / 1_000_000) * 0.9 + trainers * 0.55 + slots * 0.3 - timeline * 0.4),
+    const activeRecommendations = [...recommendations]
+      .filter((recommendation) => recommendation.status !== 'rejected')
+      .sort((a, b) => b.score - a.score);
+
+    const capacityByBudget = Math.max(0, Math.floor(budget / 900_000));
+    const capacityByTrainers = Math.max(0, Math.floor(trainers * 1.5));
+    const capacityBySlots = Math.max(0, Math.floor(slots));
+    const feasibleCount = Math.min(activeRecommendations.length, capacityByBudget, capacityByTrainers, capacityBySlots);
+
+    const prioritizedRecommendations = activeRecommendations.slice(0, feasibleCount).map((recommendation) => recommendation.region);
+    const deferredRecommendations = activeRecommendations.slice(feasibleCount).map((recommendation) => recommendation.region);
+
+    const prioritizedRecommendationRows = activeRecommendations.slice(0, feasibleCount);
+    const budgetUsed = Math.min(
+      budget,
+      prioritizedRecommendationRows.reduce((total, recommendation) => total + estimateBudgetPerRecommendation(recommendation.resourceRequirement), 0),
     );
-    const teachersReached = Math.max(500, Math.round((budget * 0.0006 + trainers * 90 + slots * 45) / 100) * 100);
+    const trainersUsed = Math.min(trainers, Math.max(0, Math.ceil(feasibleCount / 2)));
+    const slotsUsed = Math.min(slots, feasibleCount);
+
+    const expectedCoverageLift = Math.max(0, Math.round((prioritizedRecommendations.length / Math.max(activeRecommendations.length, 1)) * 16));
+    const teachersReached = Math.max(0, Math.round((prioritizedRecommendations.length * 1100 + trainersUsed * 120 + slotsUsed * 60) / 100) * 100);
 
     const risk: SimulationResult['risk'] =
       timeline <= 3 ? 'high' : trainers < 8 || selectedRecommendation.resourceRequirement.toLowerCase().includes('high') ? 'moderate' : 'low';
@@ -300,6 +353,12 @@ export function Advise() {
       teachersReached,
       deliveryConfidence: selectedRecommendation.confidence,
       risk,
+      prioritizedRecommendations,
+      deferredRecommendations,
+      budgetUsed,
+      trainersUsed,
+      slotsUsed,
+      tradeoffSummary: summarizeTradeoff(prioritizedRecommendations.length, deferredRecommendations.length, risk),
     };
 
     setSimulationResult(nextResult);
@@ -692,7 +751,7 @@ export function Advise() {
                           className="rounded-md bg-[#E8C94F] px-3 py-2 text-xs font-bold transition-colors hover:bg-[#B8860B] hover:text-white"
                           style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}
                         >
-                          Run scenario
+                          Run Simulation
                         </button>
                         <button
                           onClick={() => setIsSimulationDialogOpen(true)}
@@ -709,11 +768,36 @@ export function Advise() {
                           <h3 className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1B3A5C' }}>
                             Scenario outcome
                           </h3>
-                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
-                            <ResultCell label="Coverage lift" value={`${simulationResult.expectedCoverageLift}%`} />
-                            <ResultCell label="Teachers reached" value={simulationResult.teachersReached.toLocaleString()} />
-                            <ResultCell label="Delivery confidence" value={simulationResult.deliveryConfidence} />
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+                            <ResultCell label="Prioritized" value={String(simulationResult.prioritizedRecommendations.length)} />
+                            <ResultCell label="Deferred" value={String(simulationResult.deferredRecommendations.length)} />
+                            <ResultCell label="Budget used" value={`PHP ${simulationResult.budgetUsed.toLocaleString()}`} />
+                            <ResultCell label="Trainers used" value={String(simulationResult.trainersUsed)} />
+                            <ResultCell label="Slots used" value={String(simulationResult.slotsUsed)} />
                             <ResultCell label="Risk" value={simulationResult.risk} />
+                          </div>
+
+                          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                            <SimpleList
+                              title="Selected / prioritized recommendations"
+                              items={
+                                simulationResult.prioritizedRecommendations.length > 0
+                                  ? simulationResult.prioritizedRecommendations
+                                  : ['No recommendations selected under current constraints.']
+                              }
+                            />
+                            <SimpleList
+                              title="Deferred recommendations"
+                              items={
+                                simulationResult.deferredRecommendations.length > 0
+                                  ? simulationResult.deferredRecommendations
+                                  : ['No deferrals in this simulation run.']
+                              }
+                            />
+                          </div>
+
+                          <div className="mt-3 rounded-md border border-[#D8D8D8] bg-white p-3 text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+                            <strong>Tradeoff summary:</strong> {simulationResult.tradeoffSummary}
                           </div>
                         </div>
                       ) : (
@@ -828,6 +912,12 @@ export function Advise() {
                 <p className="mt-1">
                   <strong>Teachers reached:</strong> {simulationResult.teachersReached.toLocaleString()} estimated.
                 </p>
+                <p className="mt-1">
+                  <strong>Total budget used:</strong> PHP {simulationResult.budgetUsed.toLocaleString()}
+                </p>
+                <p className="mt-1">
+                  <strong>Trainers used:</strong> {simulationResult.trainersUsed} | <strong>Slots used:</strong> {simulationResult.slotsUsed}
+                </p>
               </div>
 
               <div className="rounded-md border border-[#D8D8D8] p-3">
@@ -843,6 +933,28 @@ export function Advise() {
                     ? 'Consider deferring or adding support resources before approval.'
                     : 'Scenario remains viable for approval with current assumptions.'}
                 </p>
+                <p className="mt-1">
+                  <strong>Tradeoff summary:</strong> {simulationResult.tradeoffSummary}
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SimpleList
+                  title="Prioritized recommendations"
+                  items={
+                    simulationResult.prioritizedRecommendations.length > 0
+                      ? simulationResult.prioritizedRecommendations
+                      : ['No recommendations prioritized in this run.']
+                  }
+                />
+                <SimpleList
+                  title="Deferred recommendations"
+                  items={
+                    simulationResult.deferredRecommendations.length > 0
+                      ? simulationResult.deferredRecommendations
+                      : ['No recommendations deferred in this run.']
+                  }
+                />
               </div>
             </div>
           ) : (

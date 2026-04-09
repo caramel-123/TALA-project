@@ -1,336 +1,220 @@
-import { Breadcrumbs } from '../components/layout/Breadcrumbs';
-import { Users, Shield, Clock, Key } from 'lucide-react';
+import { useMemo } from 'react';
+import { CheckCircle2, ClipboardList, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { Toaster } from '../components/ui/sonner';
 import { settingsAuditLog as auditLog, settingsRoles as roles, settingsUsers as users } from '../../features/shared/dev-seed/non-dashboard';
 
+// Developer audit note (requested classification)
+// 1. Advise page already exists: Already implemented
+// 2. Recommendation queue already exists: Already implemented
+// 3. Recommendation detail/action area already exists: Already implemented
+// 4. Scenario simulation UI already exists: Already implemented
+// 5. Scenario simulation logic is functional: Partially implemented
+// 6. Advise page uses a compact one-page layout: Already implemented
+// 7. Advise page avoids repeating Diagnose content: Already implemented
+// 8. Tabs for Action Plan/Delivery Notes/Simulation exist: Already implemented
+// 9. Settings page already exists: Already implemented
+// 10. Settings page has more admin content than needed: Already implemented
+// 11. Settings includes user management/roles/audit/governance: Already implemented
+// 12. Reports page is required for simulation: Missing
+// 13. Layout currently constrains page width with max-width containers: Already implemented
+// 14. Full-width layout is already implemented: Partially implemented
+// 15. Full-width changes can be made at layout level instead of per-page patching: Missing
+
+const plannerRoleNames = ['National Admin', 'Regional Implementer', 'Data Steward'];
+const teacherDetailRoleNames = ['National Admin', 'Data Steward'];
+
 export function Settings() {
-  const handleInviteUser = () => {
-    toast.info('Opening user invitation dialog...');
+  const activeUsers = useMemo(() => users.filter((user) => user.status === 'Active'), []);
+  const recentAudit = useMemo(() => auditLog.slice(0, 3), []);
+
+  const plannerRoles = useMemo(
+    () => roles.filter((role) => plannerRoleNames.includes(role.name)).map((role) => `${role.name} (${role.users})`),
+    [],
+  );
+
+  const teacherDetailRoles = useMemo(
+    () => roles.filter((role) => teacherDetailRoleNames.includes(role.name)).map((role) => `${role.name} (${role.users})`),
+    [],
+  );
+
+  const handleExportAuditSummary = () => {
+    toast.success('Audit summary exported for governance review.');
   };
 
-  const handleUserClick = (userName: string) => {
-    toast.info(`Opening profile for: ${userName}`);
-  };
-
-  const handleNavClick = (section: string) => {
-    toast.info(`Navigating to ${section}`);
+  const handleOpenPolicyReview = () => {
+    toast.info('Opening governance policy review checklist...');
   };
 
   return (
     <div className="flex-1">
       <Toaster />
-      <div className="max-w-7xl mx-auto p-6">
+
+      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
         <Breadcrumbs />
-        
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 
-            className="mb-2" 
-            style={{ 
-              fontFamily: 'Arial, sans-serif', 
-              fontSize: '24px', 
-              fontWeight: 'bold', 
-              color: '#1B3A5C' 
+
+        <header className="mb-4 rounded-xl border border-[#D8D8D8] bg-white p-4">
+          <h1
+            className="text-2xl font-bold"
+            style={{
+              fontFamily: 'Arial, sans-serif',
+              color: '#1B3A5C',
             }}
           >
-            Settings and Administration
+            Settings / Governance
           </h1>
-          <p style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
-            Control access, governance, and system behavior
+          <p className="mt-1 text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#555555' }}>
+            Privacy, access control, and accountability safeguards for responsible TALA planning decisions.
           </p>
-        </div>
 
-        {/* Settings Navigation */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          {[
-            { icon: Users, label: 'User Management', color: '#2E6DA4' },
-            { icon: Shield, label: 'Data Governance', color: '#E8C94F' },
-            { icon: Clock, label: 'Audit Log', color: '#A8C8E8' },
-            { icon: Key, label: 'Access Control', color: '#1B3A5C' },
-          ].map((item, index) => (
-            <button
-              key={index}
-              onClick={() => handleNavClick(item.label)}
-              className="p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-all text-left cursor-pointer"
-            >
-              <item.icon className="w-8 h-8 mb-3" style={{ color: item.color }} />
-              <div 
-                style={{ 
-                  fontFamily: 'Arial, sans-serif', 
-                  fontSize: '14px', 
-                  fontWeight: 'bold',
-                  color: '#1B3A5C' 
-                }}
-              >
-                {item.label}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Management */}
-          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 
-                style={{ 
-                  fontFamily: 'Arial, sans-serif', 
-                  fontSize: '18px', 
-                  fontWeight: 'bold', 
-                  color: '#1B3A5C' 
-                }}
-              >
-                User Management
-              </h2>
-              <button 
-                onClick={handleInviteUser}
-                className="px-4 py-2 rounded bg-[#2E6DA4] text-white hover:bg-[#1B3A5C] transition-colors cursor-pointer"
-                style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', fontWeight: 'bold' }}
-              >
-                Invite User
-              </button>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr style={{ backgroundColor: '#D5E8F7' }}>
-                    <th className="text-left p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>Name</th>
-                    <th className="text-left p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>Email</th>
-                    <th className="text-left p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>Role</th>
-                    <th className="text-left p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>Last Login</th>
-                    <th className="text-center p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', fontWeight: 'bold', color: '#1B3A5C' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user, index) => (
-                    <tr 
-                      key={index}
-                      onClick={() => handleUserClick(user.name)}
-                      className="border-b hover:bg-[#EBF4FB] cursor-pointer transition-colors"
-                      style={{ borderColor: '#D8D8D8' }}
-                    >
-                      <td className="p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
-                        {user.name}
-                      </td>
-                      <td className="p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
-                        {user.email}
-                      </td>
-                      <td className="p-3">
-                        <span 
-                          className="px-2 py-1 rounded text-xs"
-                          style={{ 
-                            fontFamily: 'Arial, sans-serif', 
-                            fontWeight: 'bold',
-                            backgroundColor: '#D5E8F7',
-                            color: '#1B3A5C'
-                          }}
-                        >
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="p-3" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#888888' }}>
-                        {user.lastLogin}
-                      </td>
-                      <td className="text-center p-3">
-                        <span 
-                          className="inline-block w-2 h-2 rounded-full"
-                          style={{ backgroundColor: '#2E6DA4' }}
-                        ></span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs" style={{ fontFamily: 'Arial, sans-serif' }}>
+            <span className="rounded-full border border-[#D8D8D8] bg-[#EBF4FB] px-3 py-1" style={{ color: '#1B3A5C' }}>
+              Authorized users: {activeUsers.length}
+            </span>
+            <span className="rounded-full border border-[#D8D8D8] bg-white px-3 py-1" style={{ color: '#555555' }}>
+              Role groups: {roles.length}
+            </span>
+            <span className="rounded-full border border-[#D8D8D8] bg-white px-3 py-1" style={{ color: '#555555' }}>
+              Recent audit events: {recentAudit.length}
+            </span>
           </div>
+        </header>
 
-          {/* Role Definitions */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 
-              className="mb-4" 
-              style={{ 
-                fontFamily: 'Arial, sans-serif', 
-                fontSize: '18px', 
-                fontWeight: 'bold', 
-                color: '#1B3A5C' 
-              }}
-            >
-              Role Definitions
-            </h2>
-            <div className="space-y-4">
-              {roles.map((role, index) => (
-                <div 
-                  key={index}
-                  className="p-3 rounded border cursor-pointer hover:border-[#2E6DA4] transition-colors"
-                  style={{ borderColor: '#D8D8D8' }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 
-                      style={{ 
-                        fontFamily: 'Arial, sans-serif', 
-                        fontSize: '11px', 
-                        fontWeight: 'bold',
-                        color: '#1B3A5C' 
-                      }}
-                    >
-                      {role.name}
-                    </h3>
-                    <span 
-                      className="px-2 py-1 rounded"
-                      style={{ 
-                        fontFamily: 'Arial, sans-serif', 
-                        fontSize: '9px',
-                        backgroundColor: '#EBF4FB',
-                        color: '#1A1A1A'
-                      }}
-                    >
-                      {role.users} users
+        <main className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <section className="rounded-xl border border-[#D8D8D8] bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <LockKeyhole className="h-5 w-5" style={{ color: '#1B3A5C' }} />
+              <h2 className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1B3A5C' }}>
+                Access Control
+              </h2>
+            </div>
+
+            <div className="space-y-2 text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+              <PolicyItem label="Who can view planner data" value={plannerRoles.join(' | ')} />
+              <PolicyItem label="Who can access teacher-level details" value={teacherDetailRoles.join(' | ')} />
+            </div>
+
+            <div className="mt-3 rounded-lg border border-[#D8D8D8] bg-[#EBF4FB] p-3">
+              <h3 className="text-xs font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1B3A5C' }}>
+                Authorized users (sample)
+              </h3>
+              <ul className="mt-2 space-y-1.5 text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+                {activeUsers.slice(0, 4).map((user) => (
+                  <li key={user.email} className="flex items-center justify-between gap-2">
+                    <span>{user.name}</span>
+                    <span className="rounded-full border border-[#D8D8D8] bg-white px-2 py-0.5 text-[10px]" style={{ color: '#555555' }}>
+                      {user.role}
                     </span>
-                  </div>
-                  <ul className="space-y-1">
-                    {role.permissions.map((permission, pIndex) => (
-                      <li 
-                        key={pIndex}
-                        className="flex items-start gap-2"
-                        style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}
-                      >
-                        <span style={{ color: '#2E6DA4' }}>•</span>
-                        {permission}
-                      </li>
-                    ))}
-                  </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-[#D8D8D8] bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" style={{ color: '#2E6DA4' }} />
+              <h2 className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1B3A5C' }}>
+                Data Governance
+              </h2>
+            </div>
+
+            <div className="space-y-2 text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+              <GovernanceRow title="Anonymized planning views" status="Enabled" description="Teacher names are masked in decision-facing views." />
+              <GovernanceRow title="Data minimization" status="Enabled" description="Only fields needed for planning and monitoring are surfaced." />
+              <GovernanceRow title="Retention policy" status="3-year archive" description="Aged records are archived and restricted from planner default views." />
+              <GovernanceRow title="Export safeguards" status="Enabled" description="Export actions are logged and limited to authorized roles." />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-[#D8D8D8] bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" style={{ color: '#B8860B' }} />
+              <h2 className="text-sm font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1B3A5C' }}>
+                Audit and Accountability
+              </h2>
+            </div>
+
+            <div className="rounded-lg border border-[#D8D8D8] bg-[#EBF4FB] p-3 text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+              <p className="font-bold" style={{ color: '#1B3A5C' }}>
+                Human review safeguard
+              </p>
+              <p className="mt-1">High-stakes recommendation approvals require reviewer sign-off before rollout.</p>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {recentAudit.map((entry) => (
+                <div key={`${entry.user}-${entry.timestamp}`} className="rounded-md border border-[#D8D8D8] p-2">
+                  <p className="text-xs" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+                    <strong>{entry.user}</strong> {entry.action}
+                  </p>
+                  <p className="mt-1 text-[10px]" style={{ fontFamily: 'Arial, sans-serif', color: '#555555' }}>
+                    {entry.module} | {entry.timestamp}
+                  </p>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* Audit Log */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
-          <h2 
-            className="mb-4" 
-            style={{ 
-              fontFamily: 'Arial, sans-serif', 
-              fontSize: '18px', 
-              fontWeight: 'bold', 
-              color: '#1B3A5C' 
-            }}
-          >
-            Recent Activity (Audit Log)
-          </h2>
-          <div className="space-y-3">
-            {auditLog.map((entry, index) => (
-              <div 
-                key={index}
-                className="flex items-start gap-4 p-3 rounded hover:bg-[#EBF4FB] transition-colors"
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleExportAuditSummary}
+                className="rounded-md border border-[#D8D8D8] bg-white px-3 py-2 text-xs font-bold transition-colors hover:bg-[#EBF4FB]"
+                style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}
               >
-                <div className="flex-shrink-0">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: '#D5E8F7', color: '#1B3A5C' }}
-                  >
-                    <Clock className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#1A1A1A' }}>
-                    <strong>{entry.user}</strong> {entry.action}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>
-                    <span>{entry.module}</span>
-                    <span>•</span>
-                    <span>{entry.timestamp}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Data Governance Settings */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
-          <h2 
-            className="mb-4" 
-            style={{ 
-              fontFamily: 'Arial, sans-serif', 
-              fontSize: '18px', 
-              fontWeight: 'bold', 
-              color: '#1B3A5C' 
-            }}
-          >
-            Data Governance Settings
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded" style={{ backgroundColor: '#EBF4FB' }}>
-              <div>
-                <div 
-                  style={{ 
-                    fontFamily: 'Arial, sans-serif', 
-                    fontSize: '11px', 
-                    fontWeight: 'bold',
-                    color: '#1B3A5C' 
-                  }}
-                >
-                  Data Retention Policy
-                </div>
-                <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>
-                  Automatically archive data older than 3 years
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" defaultChecked className="sr-only peer" />
-                <div className="w-11 h-6 bg-[#D8D8D8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2E6DA4]"></div>
-              </label>
+                Export audit summary
+              </button>
+              <button
+                onClick={handleOpenPolicyReview}
+                className="rounded-md bg-[#1B3A5C] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#2E6DA4]"
+                style={{ fontFamily: 'Arial, sans-serif' }}
+              >
+                Open policy review
+              </button>
             </div>
-
-            <div className="flex items-center justify-between p-4 rounded" style={{ backgroundColor: '#EBF4FB' }}>
-              <div>
-                <div 
-                  style={{ 
-                    fontFamily: 'Arial, sans-serif', 
-                    fontSize: '11px', 
-                    fontWeight: 'bold',
-                    color: '#1B3A5C' 
-                  }}
-                >
-                  Teacher Name Anonymization
-                </div>
-                <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>
-                  Show anonymized teacher identifiers instead of names
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" />
-                <div className="w-11 h-6 bg-[#D8D8D8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2E6DA4]"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded" style={{ backgroundColor: '#EBF4FB' }}>
-              <div>
-                <div 
-                  style={{ 
-                    fontFamily: 'Arial, sans-serif', 
-                    fontSize: '11px', 
-                    fontWeight: 'bold',
-                    color: '#1B3A5C' 
-                  }}
-                >
-                  Privacy Audit Logging
-                </div>
-                <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9px', color: '#888888' }}>
-                  Track all data access and exports
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" defaultChecked className="sr-only peer" />
-                <div className="w-11 h-6 bg-[#D8D8D8] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2E6DA4]"></div>
-              </label>
-            </div>
-          </div>
-        </div>
+          </section>
+        </main>
       </div>
+    </div>
+  );
+}
+
+function PolicyItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-[#D8D8D8] p-2">
+      <p className="text-[10px]" style={{ fontFamily: 'Arial, sans-serif', color: '#888888' }}>
+        {label}
+      </p>
+      <p className="mt-1 text-xs font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function GovernanceRow({
+  title,
+  status,
+  description,
+}: {
+  title: string;
+  status: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-md border border-[#D8D8D8] p-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold" style={{ fontFamily: 'Arial, sans-serif', color: '#1A1A1A' }}>
+          {title}
+        </p>
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#D8D8D8] bg-[#EBF4FB] px-2 py-0.5 text-[10px] font-bold" style={{ color: '#1B3A5C' }}>
+          <CheckCircle2 className="h-3 w-3" />
+          {status}
+        </span>
+      </div>
+      <p className="mt-1 text-[10px]" style={{ fontFamily: 'Arial, sans-serif', color: '#555555' }}>
+        {description}
+      </p>
     </div>
   );
 }
