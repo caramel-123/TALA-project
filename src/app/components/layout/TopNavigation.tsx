@@ -5,7 +5,8 @@ import {
   Database, 
   Settings
 } from 'lucide-react';
-import talaLogo from '../../../public/Tala_Logo.png';
+
+const talaLogo = new URL('../../../public/Tala_Logo.png', import.meta.url).href;
 
 const navItems = [
   { path: '/data-manager', label: 'Integrate', icon: Database },
@@ -23,12 +24,14 @@ export function TopNavigation() {
 
   return (
     <nav className="w-full bg-[#1B3A5C] text-white sticky top-0 z-50">
-      <div className="flex items-center h-16 px-6">
+      <div className="flex items-center h-14 px-6">
         <Link 
-          to="/diagnose" 
+          to="/" 
           className="flex items-center gap-2 font-bold mr-8 hover:text-[#E8C94F] transition-colors"
         >
-          <img src={talaLogo} alt="TALA" className="h-10 w-auto object-contain" />
+          <span className="inline-flex items-center justify-center rounded-md bg-white/95 px-0.8 py-1.2 shadow-sm">
+            <img src={talaLogo} alt="TALA" className="h-10 w-auto object-contain" />
+          </span>
           <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '20px', lineHeight: '1', letterSpacing: '0.02em' }}>TALA</span>
         </Link>
         

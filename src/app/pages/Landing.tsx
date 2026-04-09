@@ -1,22 +1,24 @@
 import { Link } from 'react-router';
-import talaLogo from '../../public/Tala_Logo.png';
+
+const talaLogo = new URL('../../public/Tala_Logo.png', import.meta.url).href;
 
 // Developer audit note
-// 1. A dedicated landing page already exists: Missing
-// 2. The root route already points to a landing page: Missing
-// 3. Diagnose is currently the first meaningful page: Already implemented
-// 4. Shared logo usage already exists: Already implemented
-// 5. A simple CTA route into the app is already implemented: Missing
-// 6. A landing page can be added without breaking the current dashboard flow: Already implemented
+// 1. Navbar logo already exists: Already implemented
+// 2. Navbar logo has extra surrounding padding/background space: Partially implemented
+// 3. Navbar logo size is smaller than desired: Partially implemented
+// 4. Landing page logo already exists: Already implemented
+// 5. Landing page logo size is smaller than desired: Partially implemented
+// 6. Logo sizing is controlled by shared classes or reusable components: Partially implemented
+// 7. Background/badge spacing around navbar logo can be reduced without affecting layout: Partially implemented
 
 export function Landing() {
   return (
     <div className="min-h-screen w-full bg-[#EBF4FB] px-6">
       <main className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center text-center">
-        <img src={talaLogo} alt="TALA" className="h-24 w-auto sm:h-28" />
+        <img src={talaLogo} alt="TALA" className="h-48 w-auto sm:h-60" />
 
         <h1
-          className="mt-6 text-4xl font-bold sm:text-5xl"
+          className="mt-1 text-4xl font-bold sm:text-5xl"
           style={{
             fontFamily: 'Arial, sans-serif',
             color: '#1B3A5C',
