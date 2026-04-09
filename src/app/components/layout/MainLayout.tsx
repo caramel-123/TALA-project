@@ -1,14 +1,5 @@
-import { Outlet, Link, useLocation } from 'react-router';
-import { 
-  LayoutDashboard, 
-  Activity, 
-  Lightbulb, 
-  Database, 
-  FileText, 
-  Settings 
-} from 'lucide-react';
+import { Outlet } from 'react-router';
 import { TopNavigation } from './TopNavigation';
-import { Breadcrumbs } from './Breadcrumbs';
 
 export function MainLayout() {
   return (

@@ -2,12 +2,12 @@ import { Link, useLocation } from 'react-router';
 import { ChevronRight } from 'lucide-react';
 
 const pathNames: Record<string, string> = {
-  '': 'Overview',
   'diagnose': 'Diagnose',
   'advise': 'Advise',
   'data-manager': 'Integrate',
-  'reports': 'Reports',
   'settings': 'Settings',
+  'overview': 'Diagnose',
+  'reports': 'Diagnose',
 };
 
 export function Breadcrumbs() {
@@ -18,7 +18,7 @@ export function Breadcrumbs() {
 
   return (
     <div className="flex items-center gap-2 text-sm mb-4" style={{ fontFamily: 'Arial, sans-serif' }}>
-      <Link to="/" className="text-[#2E6DA4] hover:underline">
+      <Link to="/diagnose" className="text-[#2E6DA4] hover:underline">
         Home
       </Link>
       {pathSegments.map((segment, index) => {

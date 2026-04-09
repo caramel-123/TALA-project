@@ -1,20 +1,16 @@
 import { Link, useLocation } from 'react-router';
 import { 
-  LayoutDashboard, 
   Activity, 
   Lightbulb, 
   Database, 
-  FileText, 
-  Settings,
-  Star
+  Settings
 } from 'lucide-react';
+import talaLogo from '../../../public/Tala_Logo.png';
 
 const navItems = [
-  { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/data-manager', label: 'Integrate', icon: Database },
   { path: '/diagnose', label: 'Diagnose', icon: Activity },
   { path: '/advise', label: 'Advise', icon: Lightbulb },
-  { path: '/reports', label: 'Reports', icon: FileText },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -22,7 +18,6 @@ export function TopNavigation() {
   const location = useLocation();
   
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
@@ -30,11 +25,10 @@ export function TopNavigation() {
     <nav className="w-full bg-[#1B3A5C] text-white sticky top-0 z-50">
       <div className="flex items-center h-14 px-6">
         <Link 
-          to="/" 
+          to="/diagnose" 
           className="flex items-center gap-2 font-bold mr-8 hover:text-[#E8C94F] transition-colors"
         >
-          <Star className="w-5 h-5" fill="#E8C94F" stroke="#E8C94F" />
-          <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '18px' }}>TALA</span>
+          <img src={talaLogo} alt="TALA" className="h-8 w-auto object-contain" />
         </Link>
         
         <div className="flex items-center gap-1">
