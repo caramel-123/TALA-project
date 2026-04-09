@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { MapGeoJSONFeature } from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import adm1GeoJsonUrl from '../../../features/diagnose/lib/geoBoundaries-PHL-ADM1_simplified.geojson?url';
-import adm2GeoJsonUrl from '../../../features/diagnose/lib/geoBoundaries-PHL-ADM2_simplified.geojson?url';
 import {
   buildAdm2FeatureCollectionWithContext,
   buildFeatureCollectionWithMetrics,
@@ -38,6 +35,8 @@ type TooltipState = {
 };
 
 const BASEMAP_STYLE_URL = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const adm1GeoJsonUrl = new URL('../../../features/diagnose/lib/geoBoundaries-PHL-ADM1_simplified.geojson', import.meta.url).href;
+const adm2GeoJsonUrl = new URL('../../../features/diagnose/lib/geoBoundaries-PHL-ADM2_simplified.geojson', import.meta.url).href;
 
 const SOURCE_ADM1_ID = 'diagnose-adm1-source';
 const SOURCE_ADM2_ID = 'diagnose-adm2-source';
