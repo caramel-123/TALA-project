@@ -87,6 +87,31 @@ function toSafeArray<T>(raw: unknown, mapper: (item: unknown, index: number) => 
   return raw.map(mapper);
 }
 
+function shouldUseFallbackGapFactor(candidate: GapFactorVm): boolean {
+  const placeholderName = /^gap factor\s+\d+$/i.test(candidate.factor.trim());
+  const missingNarrative = !candidate.definition;
+  const missingSource = !candidate.source;
+  const missingRecency = !candidate.recency;
+  const zeroContribution = candidate.contribution <= 0;
+
+  if (placeholderName && (missingNarrative || zeroContribution)) {
+    return true;
+  }
+
+  return missingNarrative && missingSource && missingRecency && zeroContribution;
+}
+
+function shouldUseFallbackScoreFactor(candidate: ScoreFactorVm): boolean {
+  const placeholderName = /^factor\s+\d+$/i.test(candidate.factor.trim());
+  const noSignal = candidate.weight <= 0 && candidate.score <= 0;
+
+  if (placeholderName) {
+    return true;
+  }
+
+  return noSignal;
+}
+
 export function normalizeGapFactors(raw: unknown, fallback: GapFactorVm[]): GapFactorVm[] {
   const normalized = toSafeArray(raw, (item, index): GapFactorVm => {
     const record = asRecord(item);
@@ -113,7 +138,28 @@ export function normalizeGapFactors(raw: unknown, fallback: GapFactorVm[]): GapF
     };
   });
 
-  return normalized.length > 0 ? normalized : fallback;
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  return normalized.map((factor, index) => {
+    const fallbackFactor = fallback[index];
+
+    if (!fallbackFactor) {
+      return factor;
+    }
+
+    if (shouldUseFallbackGapFactor(factor)) {
+      return fallbackFactor;
+    }
+
+    return {
+      ...factor,
+      definition: factor.definition || fallbackFactor.definition,
+      source: factor.source || fallbackFactor.source,
+      recency: factor.recency || fallbackFactor.recency,
+    };
+  });
 }
 
 export function normalizeClusters(raw: unknown, fallback: ClusterVm[]): ClusterVm[] {
@@ -164,7 +210,28 @@ export function normalizeScoreFactors(raw: unknown, fallback: ScoreFactorVm[]): 
     };
   });
 
-  return normalized.length > 0 ? normalized : fallback;
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  return normalized.map((factor, index) => {
+    const fallbackFactor = fallback[index];
+
+    if (!fallbackFactor) {
+      return factor;
+    }
+
+    if (shouldUseFallbackScoreFactor(factor)) {
+      return fallbackFactor;
+    }
+
+    return {
+      ...factor,
+      weight: factor.weight > 0 ? factor.weight : fallbackFactor.weight,
+      score: factor.score > 0 ? factor.score : fallbackFactor.score,
+      impact: factor.impact || fallbackFactor.impact,
+    };
+  });
 }
 
 export function normalizeDataConfidence(raw: unknown, fallback: DataConfidenceVm[]): DataConfidenceVm[] {
