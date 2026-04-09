@@ -315,7 +315,7 @@ export function Advise() {
     <div className="flex-1">
       <Toaster />
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
         <Breadcrumbs />
 
         <header className="sticky top-0 z-20 mb-4 rounded-xl border border-[#D8D8D8] bg-white/95 p-4 backdrop-blur">
